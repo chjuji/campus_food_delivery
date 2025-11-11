@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商户入驻 - 校园外卖平台</title>
+    <!-- 引入Bootstrap样式 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入图标库 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .valid-feedback,
+        .invalid-feedback {
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container form-container">
+        <div class="text-center mb-5">
+            <h2>商户入驻申请</h2>
+            <p class="text-muted">请填写以下信息完成注册，提交后将由管理员审核</p>
+        </div>
+
+        <!-- 注册表单 -->
+        <form id="merchantRegisterForm" novalidate>
+            <!-- 基本信息部分 -->
+            <div class="form-section">
+                <h5><i class="bi bi-building me-2"></i>基本信息</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="merchantName" class="form-label">店铺名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="merchantName" required minlength="2" maxlength="100"
+                            placeholder="请输入店铺名称（如：三餐麻辣烫）">
+                        <div class="invalid-feedback">请输入2-100位的店铺名称</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="contactName" class="form-label">联系人姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="contactName" required minlength="2" maxlength="50"
+                            placeholder="请输入负责人姓名">
+                        <div class="invalid-feedback">请输入2-50位的联系人姓名</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="contactPhone" class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="contactPhone" required pattern="^1[3-9]\d{9}$"
+                            placeholder="请输入11位手机号">
+                        <div class="invalid-feedback">请输入有效的11位手机号</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">登录密码 <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" required minlength="8" maxlength="20"
+                            placeholder="8-20位，含字母、数字、特殊符号">
+                        <div class="invalid-feedback">密码需8-20位，且包含字母、数字和特殊符号</div>
+                    </div>
+                    <div class="col-12">
+                        <label for="address" class="form-label">店铺地址 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="address" required maxlength="255"
+                            placeholder="请输入校园内详细地址（如：一餐三楼302档口）">
+                        <div class="invalid-feedback">请输入店铺地址</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 资质证明部分 -->
+            <div class="form-section">
+                <h5><i class="bi bi-file-earmark-text me-2"></i>资质证明</h5>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="licenseImg" class="form-label">营业执照照片 <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="licenseImg" required accept="image/jpeg,image/png">
+                        <p class="upload-hint">支持JPG、PNG格式，文件大小不超过5MB，需清晰展示营业执照信息</p>
+                        <div class="invalid-feedback">请上传营业执照照片</div>
+                        <!-- <label for="licenseImg" class="form-label">营业执照照片 <span class="text-muted">(选填)</span></label>
+                        <input type="file" class="form-control" id="licenseImg" accept="image/jpeg,image/png">
+                        <p class="upload-hint">支持JPG、PNG格式，文件大小不超过5MB，选填（无执照或暂未上传可稍后补传）</p> -->
+                    </div>
+                    <div class="col-12">
+                        <label for="foodLicenseImg" class="form-label">食品经营许可证（餐饮类必填）</label>
+                        <input type="file" class="form-control" id="foodLicenseImg" accept="image/jpeg,image/png">
+                        <p class="upload-hint">餐饮类商户需上传，支持JPG、PNG格式，文件大小不超过5MB</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提交按钮 -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="/merchant/login" class="btn btn-secondary me-md-2">已有账号？去登录</a>
+                <button type="submit" class="btn btn-primary">提交入驻申请</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 引入jQuery和Bootstrap脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // 表单验证逻辑
+        $(document).ready(function () {
+            const form = $('#merchantRegisterForm')[0];
+
+            // 密码复杂度验证（字母、数字、特殊符号）
+            $('#password').on('input', function () {
+                const password = $(this).val();
+                const hasLetter = /[a-zA-Z]/.test(password);
+                const hasNumber = /\d/.test(password);
+                const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+                if (password.length >= 8 && password.length <= 20 && hasLetter && hasNumber && hasSpecial) {
+                    $(this).removeClass('is-invalid').addClass('is-valid');
+                } else {
+                    $(this).removeClass('is-valid').addClass('is-invalid');
+                }
+            });
+
+            // 表单提交处理
+            $('#merchantRegisterForm').submit(function (e) {
+                e.preventDefault();
+
+                // 前端基础验证
+                if (!form.checkValidity()) {
+                    e.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+
+                // 收集表单数据（文件上传需用FormData）
+                const formData = new FormData();
+                formData.append('merchant_name', $('#merchantName').val());
+                formData.append('contact_name', $('#contactName').val());
+                formData.append('contact_phone', $('#contactPhone').val());
+                formData.append('password', $('#password').val());
+                formData.append('address', $('#address').val());
+                formData.append('license_img', $('#licenseImg')[0].files[0]);
+                formData.append('food_license_img', $('#foodLicenseImg')[0].files[0]);
+                
+                // 收集表单数据（文件上传需用FormData），仅在选择文件时才 append
+                // const formData = new FormData();
+                // formData.append('merchant_name', $('#merchantName').val());
+                // formData.append('contact_name', $('#contactName').val());
+                // formData.append('contact_phone', $('#contactPhone').val());
+                // formData.append('password', $('#password').val());
+                // formData.append('address', $('#address').val());
+                // const licenseFile = $('#licenseImg')[0].files[0];
+                // if (licenseFile) formData.append('license_img', licenseFile);
+                // const foodFile = $('#foodLicenseImg')[0].files[0];
+                // if (foodFile) formData.append('food_license_img', foodFile);
+
+                // 提交注册请求（注意：文件上传需设置contentType: false）
+                $.ajax({
+                    url: '/api/merchant/register',  // 对应后端API接口
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,  // 必须设置为false，否则jQuery会默认添加Content-Type
+                    processData: false,  // 必须设置为false，否则jQuery会尝试转换数据
+                    success: function (res) {
+                        if (res.code === 200) {
+                            alert('入驻申请提交成功！请等待管理员审核（1-3个工作日），审核通过后可登录');
+                            window.location.href = '/merchant/login';  // 跳转至登录页
+                        } else {
+                            alert('提交失败：' + res.msg);
+                        }
+                    },
+                    error: function (xhr) {
+                        alert('网络错误，请稍后重试');
+                        console.error(xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

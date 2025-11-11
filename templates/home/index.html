@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>校园外卖 - 首页</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial;
+            margin: 0;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: 28px;
+        }
+
+        p.lead {
+            margin: 0;
+            color: #666;
+        }
+
+        .grid {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            flex: 1 1 220px;
+            min-width: 200px;
+            background: #fafafa;
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #eceff3;
+        }
+
+        .card h3 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #fff;
+            background: #007bff;
+        }
+
+        .muted {
+            color: #888;
+            font-size: 13px;
+            margin-top: 10px;
+            display: block;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #999;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>校园外卖</h1>
+            <p class="lead">欢迎使用校园外卖系统 —— 请选择您的入口</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h3>学生端</h3>
+                <p class="muted">浏览商家，提交订单，查看订单状态</p>
+                <a class="btn" href="{{ url_for('student_login_page') }}">进入学生首页</a>
+                <div style="margin-top:8px;">
+                    <a href="{{ url_for('student_login_page') }}">登录</a> |
+                    <a href="{{ url_for('student_register_page') }}">注册</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>商户端</h3>
+                <p class="muted">管理菜品，处理订单</p>
+                <a class="btn" href="{{ url_for('merchant_login_page') }}">进入商户首页</a>
+                <div style="margin-top:8px;">
+                    <a href="{{ url_for('merchant_login_page') }}">登录</a> |
+                    <a href="{{ url_for('merchant_register_page') }}">注册</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>管理员</h3>
+                <p class="muted">系统管理与审核</p>
+                <a class="btn" href="{{ url_for('admin_login_page') }}">进入管理员首页</a>
+                <div style="margin-top:8px;">
+                    <a href="{{ url_for('admin_login_page') }}">登录</a>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            &copy; {{ current_year if current_year is defined else "" }} 校园外卖系统
+        </footer>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物车 - 校内外卖平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .cart-item {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+        .dish-img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+        }
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .summary-card {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/student">校内美食</a>
+            <div class="ms-auto">
+                <span id="userName" class="me-3"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="container mt-4">
+        <h4>我的购物车</h4>
+        
+        <!-- 购物车列表 -->
+        <div id="cartList" class="mb-4">
+            <div class="text-center text-muted">购物车为空</div>
+        </div>
+
+        <!-- 购物车汇总 -->
+        <div class="row">
+            <div class="col-md-6"></div>
+            <div class="col-md-6">
+                <div class="summary-card">
+                    <h5>订单汇总</h5>
+                    <div class="d-flex justify-content-between">
+                        <span>商品总价：</span>
+                        <span id="totalPrice">¥0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>配送费：</span>
+                        <span>¥5.00</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>总计：</span>
+                        <span id="finalPrice">¥5.00</span>
+                    </div>
+                    <button id="payBtn" class="btn btn-success w-100 mt-3" onclick="createOrder()" disabled>
+                        立即支付
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script>
+        // 页面加载时检查登录状态
+        $(function () {
+            const token = localStorage.getItem('student_token');
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            if (!token) {
+                window.location.href = '/student/login';
+                return;
+            }
+            $('#userName').text(userInfo.name);
+            loadCart();
+        });
+
+        // 加载购物车
+        function loadCart() {
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: '/api/student/cart',
+                type: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function (res) {
+                    if (res.code === 200) {
+                        renderCart(res.data);
+                    } else {
+                        alert('获取购物车失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 渲染购物车
+        function renderCart(cartItems) {
+            if (cartItems.length === 0) {
+                $('#cartList').html('<div class="text-center text-muted">购物车为空</div>');
+                $('#totalPrice').text('¥0.00');
+                $('#finalPrice').text('¥5.00');
+                $('#payBtn').prop('disabled', true);
+                return;
+            }
+
+            let html = '';
+            let totalPrice = 0;
+
+            cartItems.forEach(item => {
+                const itemTotal = item.dish.price * item.quantity;
+                totalPrice += itemTotal;
+
+                html += `
+                    <div class="cart-item row">
+                        <div class="col-md-2">
+                            <img src="/static/${item.dish.img_url}" class="dish-img rounded">
+                        </div>
+                        <div class="col-md-4">
+                            <h6>${item.dish.dish_name}</h6>
+                            <p class="text-muted">${item.dish.description || '无描述'}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-danger fs-5">¥${item.dish.price}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quantity-control">
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                    onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                                <span>${item.quantity}</span>
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                    onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                                <button class="btn btn-sm btn-danger ms-2" 
+                                    onclick="removeFromCart(${item.id})">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            $('#cartList').html(html);
+            $('#totalPrice').text('¥' + totalPrice.toFixed(2));
+            $('#finalPrice').text('¥' + (totalPrice + 5).toFixed(2));
+            $('#payBtn').prop('disabled', false);
+        }
+
+        // 更新购物车数量
+        function updateQuantity(cartId, newQuantity) {
+            if (newQuantity < 1) {
+                removeFromCart(cartId);
+                return;
+            }
+
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: `/api/student/cart/${cartId}`,
+                type: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                contentType: 'application/json',
+                data: JSON.stringify({ quantity: newQuantity }),
+                success: function (res) {
+                    if (res.code === 200) {
+                        loadCart(); // 刷新购物车
+                    } else {
+                        alert('更新失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 从购物车删除
+        function removeFromCart(cartId) {
+            if (!confirm('确定要从购物车删除该商品吗？')) return;
+
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: `/api/student/cart/${cartId}`,
+                type: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function (res) {
+                    if (res.code === 200) {
+                        loadCart(); // 刷新购物车
+                    } else {
+                        alert('删除失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 创建订单
+        function createOrder() {
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: '/api/student/order/create',
+                type: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                contentType: 'application/json',
+                data: JSON.stringify({}),
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('订单创建成功！订单号：' + res.data.order_id);
+                        // 清空购物车
+                        clearCart();
+                        // 跳转到订单页面
+                        window.location.href = '/student/orders';
+                    } else {
+                        alert('创建订单失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 清空购物车
+        function clearCart() {
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: '/api/student/cart/clear',
+                type: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function (res) {
+                    if (res.code === 200) {
+                        loadCart(); // 刷新购物车
+                    }
+                }
+            });
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('student_token');
+            localStorage.removeItem('userInfo');
+            window.location.href = '/student/login';
+        }
+    </script>
+</body>
+
+</html>

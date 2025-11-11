@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员后台 - 校园外卖平台</title>
+    <!-- 引入Bootstrap和图标库 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        .sidebar {
+            height: 100vh;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+
+        .sidebar .nav-link {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .license-img {
+            max-width: 200px;
+            cursor: pointer;
+        }
+
+        .modal-img {
+            max-width: 100%;
+            max-height: 80vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 左侧导航栏 -->
+            <div class="col-md-2 sidebar">
+                <h4 class="text-center mb-4">管理员后台</h4>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="switchTab('pending')">
+                            <i class="bi bi-list-check me-2"></i>待审核商户
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="switchTab('approved')">
+                            <i class="bi bi-check-circle me-2"></i>已通过商户
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="switchTab('rejected')">
+                            <i class="bi bi-x-circle me-2"></i>已驳回商户
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/admin/students">
+                            <i class="bi bi-people me-2"></i>学生用户管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/admin/orders">
+                            <i class="bi bi-box-seam me-2"></i>订单统计
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/admin/settings">
+                            <i class="bi bi-gear me-2"></i>平台设置
+                        </a>
+                    </li>
+                    <li class="nav-item mt-5">
+                        <a class="nav-link text-danger" onclick="logout()" style="cursor: pointer;">
+                            <i class="bi bi-door-open me-2"></i>退出登录
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 右侧内容区 -->
+            <div class="col-md-10 content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3><i class="bi bi-list-check me-2"></i>待审核商户名单</h3>
+                    <span class="badge bg-warning" id="pendingCount">0</span> <!-- 待审核数量 -->
+                </div>
+
+                <!-- 待审核商户表格 -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>序号</th>
+                                        <th>店铺名称</th>
+                                        <th>联系人</th>
+                                        <th>联系电话</th>
+                                        <th>地址</th>
+                                        <th>申请时间</th>
+                                        <th>资质证明</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pendingMerchantsTable">
+                                    <!-- 表格内容通过JS动态填充 -->
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 资质图片查看模态框 -->
+    <div class="modal fade" id="licenseModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">资质证明图片</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="" class="modal-img" id="modalImgSrc" alt="资质图片">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入JS依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
+
+    <script>
+        let currentTab = 'pending'; // 当前选中的标签页
+        
+        // 页面加载时获取商户列表
+        $(document).ready(function () {
+            // 获取JWT Token（从Cookie或LocalStorage中，根据登录逻辑调整）
+            // const token = Cookies.get('access_token');
+            const token = localStorage.getItem('admin_token');
+            console.log('当前 admin_token:', token); // 新增调试，确认 token 存在
+            if (!token) {
+                // 未登录，跳转到登录页
+                window.location.href = '/admin/login';
+                return;
+            }
+
+            // 加载默认标签页（待审核商户）
+            loadMerchantData('pending');
+        });
+        
+        // 切换标签页
+        function switchTab(tabType) {
+            if (currentTab === tabType) return; // 如果已经是当前标签页，不重复加载
+            
+            // 更新导航高亮
+            $('.nav-link.active').removeClass('active');
+            $(`.nav-link[onclick*="${tabType}"]`).addClass('active');
+            
+            currentTab = tabType;
+            loadMerchantData(tabType);
+        }
+        
+        // 加载商户数据
+        function loadMerchantData(tabType) {
+            let apiUrl, titleText, countBadge = $('#pendingCount');
+            
+            // 根据标签页类型设置API接口和标题
+            switch(tabType) {
+                case 'pending':
+                    apiUrl = '/api/admin/pending_merchants';
+                    titleText = '待审核商户名单';
+                    countBadge.show();
+                    break;
+                case 'approved':
+                    apiUrl = '/api/admin/get_approved_merchants';
+                    titleText = '已通过商户名单';
+                    countBadge.hide();
+                    break;
+                case 'rejected':
+                    apiUrl = '/api/admin/get_rejected_merchants';
+                    titleText = '已驳回商户名单';
+                    countBadge.hide();
+                    break;
+                default:
+                    apiUrl = '/api/admin/pending_merchants';
+                    titleText = '待审核商户名单';
+                    countBadge.show();
+            }
+            
+            // 更新页面标题
+            $('h3').html(`<i class="bi bi-list-check me-2"></i>${titleText}`);
+
+            // 请求商户数据
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: apiUrl,
+                type: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`  // JWT认证头
+                },
+                success: function (res) {
+                    if (res.code === 200) {
+                        const merchants = res.data;
+                        // 只有待审核页面才显示数量角标
+                        if (tabType === 'pending') {
+                            countBadge.text(merchants.length);
+                        }
+                        renderMerchantTable(merchants, tabType);  // 渲染表格，传递标签页类型
+                    } else {
+                        alert('获取数据失败：' + res.msg);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('请求失败:', xhr.responseText);
+                    // 若 token 无效（401），强制跳转登录
+                    if (xhr.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        window.location.href = '/admin/login';
+                    }
+                }
+            });
+        }
+
+        // 渲染商户表格
+        function renderMerchantTable(merchants, tabType) {
+            const tableBody = $('#pendingMerchantsTable');
+            tableBody.empty();  // 清空现有内容
+
+            // 根据标签页类型显示不同的空状态提示
+            let emptyText = '暂无待审核商户';
+            if (tabType === 'approved') {
+                emptyText = '暂无已通过商户';
+            } else if (tabType === 'rejected') {
+                emptyText = '暂无已驳回商户';
+            }
+
+            if (merchants.length === 0) {
+                tableBody.append(`
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">${emptyText}</td>
+                    </tr>
+                `);
+                return;
+            }
+
+            // 遍历商户数据，生成表格行
+            merchants.forEach((merchant, index) => {
+                // 根据标签页类型决定是否显示操作按钮
+                let actionButtons = '';
+                if (tabType === 'pending') {
+                    // 待审核页面显示通过/驳回按钮
+                    actionButtons = `
+                        <button class="btn btn-sm btn-success me-1" 
+                                onclick="reviewMerchant(${merchant.id}, 'pass')">
+                            通过
+                        </button>
+                        <button class="btn btn-sm btn-danger" 
+                                onclick="reviewMerchant(${merchant.id}, 'reject')">
+                            驳回
+                        </button>
+                    `;
+                } else {
+                    // 已通过/已驳回页面不显示操作按钮或显示状态标签
+                    let statusLabel = '已通过';
+                    let statusClass = 'bg-success';
+                    if (tabType === 'rejected') {
+                        statusLabel = '已驳回';
+                        statusClass = 'bg-danger';
+                    }
+                    actionButtons = `<span class="badge ${statusClass}">${statusLabel}</span>`;
+                }
+                
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${merchant.merchant_name}</td>
+                        <td>${merchant.contact_name}</td>
+                        <td>${merchant.contact_phone}</td>
+                        <td>${merchant.address}</td>
+                        <td>${merchant.create_time}</td>
+                        <td>
+                            <!-- 营业执照图片（点击查看大图） -->
+                            <img src="/static/${merchant.license_img}" class="license-img rounded" 
+                                 onclick="showLicense('/static/${merchant.license_img}')" 
+                                 alt="营业执照">
+                            ${merchant.food_license_img ?
+                        `<br><img src="/static/${merchant.food_license_img}" class="license-img rounded mt-2" 
+                                    onclick="showLicense('/static/${merchant.food_license_img}')" 
+                                    alt="食品经营许可证">` : ''}
+                        </td>
+                        <td>
+                            ${actionButtons}
+                        </td>
+                    </tr>
+                `;
+                tableBody.append(row);
+            });
+        }
+
+        // 查看资质图片（打开模态框）
+        function showLicense(imgUrl) {
+            $('#modalImgSrc').attr('src', imgUrl);  // 设置图片路径
+            $('#licenseModal').modal('show');  // 显示模态框
+        }
+
+        // 审核商户（通过/驳回）
+        function reviewMerchant(merchantId, action) {
+            const confirmText = action === 'pass' ? '确定通过该商户的申请吗？' : '确定驳回该商户的申请吗？';
+            if (!confirm(confirmText)) {
+                return;
+            }
+
+            // const token = Cookies.get('access_token');
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: '/api/admin/review_merchant',
+                type: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    id: merchantId,
+                    action: action
+                }),
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('审核操作已完成');
+                        // 重新加载当前标签页的数据，而不是刷新整个页面
+                        loadMerchantData(currentTab);
+                    } else {
+                        alert('操作失败：' + res.msg);
+                    }
+                },
+                error: function () {
+                    alert('网络错误，操作失败');
+                }
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('admin_token'); // 清除 token
+            window.location.href = '/admin/login';
+        }
+    </script>
+</body>
+
+</html>

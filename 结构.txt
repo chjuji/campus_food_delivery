@@ -1,0 +1,50 @@
+campus_food_delivery/
+├── app.py                  # 项目入口（初始化Flask、注册蓝图、启动服务）
+├── config.py               # 配置文件（数据库、JWT密钥、路径等）
+├── requirements.txt        # 依赖库列表
+├── .env                    # 环境变量（数据库密码等敏感信息，不提交到代码库）
+├── static/                 # 静态资源
+│   ├── uploads/            # 上传文件存储
+│   │   ├── dish/           # 菜品图片
+│   │   ├── merchant/       # 商户证件/店铺图片
+│   │   └── avatar/         # 用户头像
+│   └── css/                # 前端样式（简化版Web界面用）
+│       └── style.css
+├── templates/              # 前端模板（简化版Web界面用）
+│   ├── student/            # 学生端页面
+│   ├── merchant/           # 商户端页面
+│   └── admin/              # 管理端页面
+├── models/                 # 数据库模型（ORM）
+│   ├── __init__.py
+│   ├── student.py          # 学生用户模型
+│   ├── merchant.py         # 商户模型
+│   ├── dish.py             # 菜品模型
+│   ├── order.py            # 订单模型
+│   ├── cart.py             # 购物车模型
+│   ├── comment.py          # 评价模型
+│   ├── coupon.py           # 优惠券模型
+│   └── complaint.py        # 投诉模型
+├── routes/                 # 路由（API接口）
+│   ├── __init__.py
+│   ├── student.py          # 学生端接口
+│   ├── merchant.py         # 商户端接口
+│   ├── admin.py            # 管理端接口
+│   ├── order.py            # 订单相关接口
+│   └── common.py           # 公共接口（如图片上传）
+├── services/               # 业务逻辑层（复杂功能封装）
+│   ├── __init__.py
+│   ├── auth_service.py     # 认证服务（登录/注册逻辑）
+│   ├── order_service.py    # 订单处理逻辑（创建/取消/退款）
+│   ├── payment_service.py  # 支付服务（模拟校园一卡通/微信支付）
+│   └── notification_service.py  # 通知服务（短信/站内信）
+├── utils/                  # 工具函数
+│   ├── __init__.py
+│   ├── jwt_utils.py        # JWT工具（生成/验证Token）
+│   ├── file_utils.py       # 文件处理（图片上传/格式校验）
+│   ├── password_utils.py   # 密码加密（bcrypt）
+│   └── validator.py        # 数据校验（参数合法性检查）
+└── tests/                  # 单元测试
+    ├── __init__.py
+    ├── test_student.py
+    ├── test_merchant.py
+    └── test_order.py

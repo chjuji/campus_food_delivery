@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>学生注册</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container" style="max-width: 500px; margin-top: 50px;">
+        <h3 class="text-center">学生注册</h3>
+        <form id="registerForm">
+            <div class="mb-3">
+                <label for="studentId" class="form-label">学号</label>
+                <input type="text" class="form-control" id="studentId" required>
+            </div>
+            <div class="mb-3">
+                <label for="name" class="form-label">姓名</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="phone" class="form-label">手机号</label>
+                <input type="tel" class="form-control" id="phone" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">密码（8-20位，含字母、数字、特殊符号）</label>
+                <input type="password" class="form-control" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">注册</button>
+            <div class="text-center mt-3">
+                <a href="/student/login">已有账号？去登录</a>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script>
+        $('#registerForm').submit(function (e) {
+            e.preventDefault();
+            const data = {
+                student_id: $('#studentId').val(),
+                name: $('#name').val(),
+                phone: $('#phone').val(),
+                password: $('#password').val()
+            };
+            // 调用注册API
+            $.ajax({
+                url: '/api/student/register',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('注册成功，请登录');
+                        window.location.href = '/student/login';
+                    } else {
+                        alert(res.msg);
+                    }
+                },
+                error: function () {
+                    alert('注册失败，请重试');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

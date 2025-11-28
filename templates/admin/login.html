@@ -48,6 +48,7 @@
                     if (res.code === 200) {
                         localStorage.setItem('admin_token', res.data.token);
                         console.log('管理员 token 已存储:', res.data.token); // 新增调试
+                        alert('登录成功');
                         window.location.href = '/admin/index';
                     } else {
                         alert(res.msg);

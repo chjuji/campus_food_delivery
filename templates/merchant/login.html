@@ -51,6 +51,7 @@
                     if (res.code === 200) {
                         localStorage.setItem('merchant_token', res.data.token);
                         localStorage.setItem('merchantInfo', JSON.stringify(res.data.user_info));
+                        alert('登录成功');
                         // 检查审核状态
                         if (res.data.user_info.status === 0) {
                             alert('您的店铺正在审核中，请耐心等待');

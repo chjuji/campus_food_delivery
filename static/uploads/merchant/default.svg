@@ -1,0 +1,17 @@
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="50" cy="50" r="45" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+  
+  <!-- 餐具图标 -->
+  <g fill="#343a40">
+    <!-- 碗 -->
+    <path d="M30,70 Q50,50 70,70 Q70,80 30,80 Z" fill="#343a40"/>
+    
+    <!-- 筷子 -->
+    <rect x="45" y="30" width="3" height="40" rx="1" fill="#8b4513"/>
+    <rect x="52" y="30" width="3" height="40" rx="1" fill="#8b4513"/>
+  </g>
+  
+  <!-- 文字标识 -->
+  <text x="50" y="60" font-family="Arial, sans-serif" font-size="14" fill="#343a40" text-anchor="middle">餐饮</text>
+</svg>

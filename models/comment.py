@@ -5,7 +5,7 @@ class Comment(db.Model):
     __tablename__ = 'comment'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), unique=True, nullable=False, comment='订单ID')
+    order_id = db.Column(db.Integer, db.ForeignKey('food_order.id'), unique=True, nullable=False, comment='订单ID')
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False, comment='学生ID')
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchant.id'), nullable=False, comment='商户ID')
     dish_score = db.Column(db.Integer, nullable=False, comment='菜品评分1-5')

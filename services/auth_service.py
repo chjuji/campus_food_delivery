@@ -48,7 +48,7 @@ def merchant_register(data: dict):
         password=encrypted_pwd,
         address=data['address'],
         license_img=data.get('license_img', ''),
-        food_license_img=data.get('food_license_img', '')
+        logo=data.get('logo', '')
     )
     db.session.add(new_merchant)
     db.session.commit()

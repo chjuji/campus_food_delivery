@@ -1,0 +1,619 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{% block page_title %}个人信息 - 校内外卖平台{% endblock %}{% endblock %}
+
+{% block sidebar_title %}学生中心{% endblock %}
+
+{% block sidebar_menu %}
+    <li><a href="/student/index">首页</a></li>
+    <li><a href="/student/cart">购物车</a></li>
+    <li><a href="/student/orders">我的订单</a></li>
+    <li><a href="/student/profile" class="active">个人信息</a></li>
+    <li><a href="/student/complaints">我的投诉</a></li>
+{% endblock %}
+
+{% block content %}
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>基本信息</h5>
+                </div>
+                <div class="card-body text-center">
+                    <!-- 头像上传区域 -->
+                    <div class="avatar-upload mb-4">
+                        <div class="avatar-preview" style="position: relative; width: 150px; height: 150px; margin: 0 auto;">
+                            <img id="avatarPreview" src="/static/uploads/avatar/default.png" alt="头像" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                            <div class="avatar-upload-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;">
+                                <span class="text-white">更换头像</span>
+                            </div>
+                            <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                    <h5 id="userName" class="mb-1">加载中...</h5>
+                    <p class="text-muted mb-3">学生用户</p>
+                    <button class="btn btn-primary mb-2" onclick="openEditModal()">编辑信息</button>
+                    <button class="btn btn-outline-danger" onclick="changePassword()">修改密码</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>详细信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">姓名：</div>
+                        <div class="col-sm-9" id="info-name">加载中...</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">学号：</div>
+                        <div class="col-sm-9" id="info-id">加载中...</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">手机号：</div>
+                        <div class="col-sm-9" id="info-phone">加载中...</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">性别：</div>
+                        <div class="col-sm-9" id="info-gender">加载中...</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">邮箱：</div>
+                        <div class="col-sm-9" id="info-email">加载中...</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">默认收货地址：</div>
+                        <div class="col-sm-9" id="info-address">加载中...</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-sm-3 col-form-label text-end">注册时间：</div>
+                        <div class="col-sm-9" id="info-register-time">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>收货地址管理</h5>
+            <button class="btn btn-primary btn-sm float-end" onclick="addAddress()">添加地址</button>
+        </div>
+        <div class="card-body">
+            <div id="addressList" class="row gap-3">
+                <div class="col-12 text-center text-muted">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>账户安全设置</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover">
+                <tbody>
+                    <tr onclick="changePassword()">
+                        <td width="80%">修改登录密码</td>
+                        <td class="text-right"><span class="text-muted">点击修改</span> <i class="bi bi-chevron-right"></i></td>
+                    </tr>
+                    <tr onclick="bindPhone()">
+                        <td width="80%">绑定手机号</td>
+                        <td class="text-right"><span class="text-muted">点击绑定</span> <i class="bi bi-chevron-right"></i></td>
+                    </tr>
+                    <tr onclick="bindEmail()">
+                        <td width="80%">绑定邮箱</td>
+                        <td class="text-right"><span class="text-muted">点击绑定</span> <i class="bi bi-chevron-right"></i></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <style>
+        .avatar-preview:hover .avatar-upload-overlay {
+            opacity: 1;
+            cursor: pointer;
+        }
+        .address-item {
+            position: relative;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .address-item:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .address-item.default::before {
+            content: '默认';
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: #0d6efd;
+            color: white;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            border-radius: 8px 0 8px 0;
+        }
+        .address-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .table-hover tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+    <script>
+        $(function () {
+            // 检查登录状态
+            const token = localStorage.getItem('student_token');
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            if (!token) {
+                window.location.href = '/student/login';
+                return;
+            }
+            
+            // 设置当前菜单激活状态
+            const currentPath = window.location.pathname;
+            $('.sidebar-menu a').each(function() {
+                if ($(this).attr('href') === currentPath) {
+                    $(this).addClass('active');
+                } else {
+                    $(this).removeClass('active');
+                }
+            });
+            
+            // 加载用户信息
+            loadProfile();
+            
+            // 加载地址列表
+            loadAddressList();
+            
+            // 头像上传事件
+            $('.avatar-preview').on('click', function() {
+                $('#avatarInput').click();
+            });
+            
+            $('#avatarInput').on('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        $('#avatarPreview').attr('src', event.target.result);
+                        uploadAvatar(file);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        // 加载个人信息
+        function loadProfile() {
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: '/api/student/profile',
+                type: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(res) {
+                    if (res.code === 200) {
+                        const data = res.data;
+                        
+                        // 更新基本信息
+                        $('#userName').text(data.name);
+                        if (data.avatar) {
+                            $('#avatarPreview').attr('src', '/static/uploads/avatar/' + data.avatar);
+                        }
+                        
+                        // 更新详细信息
+                        $('#info-name').text(data.name || '未设置');
+                        $('#info-id').text(data.student_id || '未设置');
+                        $('#info-phone').text(data.phone || '未设置');
+                        $('#info-gender').text(data.gender || '未设置');
+                        $('#info-email').text(data.email || '未设置');
+                        $('#info-address').text(data.address || '未设置');
+                        $('#info-register-time').text(formatDate(data.created_at || new Date().toISOString()));
+                        
+                        // 存储用户信息到本地
+                        localStorage.setItem('userInfo', JSON.stringify(data));
+                    } else {
+                        alert('获取用户信息失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 上传头像
+        function uploadAvatar(file) {
+            const token = localStorage.getItem('student_token');
+            const formData = new FormData();
+            formData.append('avatar', file);
+            
+            $.ajax({
+                url: '/api/student/avatar',
+                type: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(res) {
+                    if (res.code === 200) {
+                        alert('头像上传成功！');
+                    } else {
+                        alert('头像上传失败：' + res.msg);
+                        // 恢复默认头像
+                        $('#avatarPreview').attr('src', '/static/uploads/avatar/default.png');
+                    }
+                },
+                error: function() {
+                    alert('头像上传失败，请稍后重试');
+                    // 恢复默认头像
+                    $('#avatarPreview').attr('src', '/static/uploads/avatar/default.png');
+                }
+            });
+        }
+
+        // 加载地址列表
+        function loadAddressList() {
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: '/api/student/addresses',
+                type: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(res) {
+                    if (res.code === 200) {
+                        renderAddressList(res.data);
+                    } else {
+                        $('#addressList').html('\u003cdiv class="col-12 text-center text-muted"\u003e获取地址列表失败\u003c/div\u003e');
+                    }
+                },
+                error: function() {
+                    $('#addressList').html('\u003cdiv class="col-12 text-center text-muted"\u003e获取地址列表失败\u003c/div\u003e');
+                }
+            });
+        }
+
+        // 渲染地址列表
+        function renderAddressList(addresses) {
+            if (!addresses || addresses.length === 0) {
+                $('#addressList').html('\u003cdiv class="col-12 text-center text-muted"\u003e暂无收货地址，点击添加地址\u003c/div\u003e');
+                return;
+            }
+            
+            let html = '';
+            addresses.forEach(addr => {
+                html += `
+                    \u003cdiv class="col-md-4 address-item ${addr.is_default ? 'default' : ''}"\u003e
+                        \u003cdiv class="address-actions"\u003e
+                            \u003cbutton class="btn btn-sm btn-outline-primary" onclick="editAddress(${addr.id})"\u003e编辑\u003c/button\u003e
+                            \u003cbutton class="btn btn-sm btn-outline-danger" onclick="deleteAddress(${addr.id})"\u003e删除\u003c/button\u003e
+                        \u003c/div\u003e
+                        \u003ch6 class="mb-1"\u003e${addr.name}\u003c/h6\u003e
+                        \u003cp class="text-muted mb-2"\u003e${addr.phone}\u003c/p\u003e
+                        \u003cp class="mb-0"\u003e${addr.address}\u003c/p\u003e
+                    \u003c/div\u003e
+                `;
+            });
+            
+            $('#addressList').html(html);
+        }
+
+        // 打开编辑信息模态框
+        function openEditModal() {
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            $('#edit-name').val(userInfo.name || '');
+            $('#edit-phone').val(userInfo.phone || '');
+            $('#edit-email').val(userInfo.email || '');
+            $('#edit-gender').val(userInfo.gender || '男');
+            $('#editModal').modal('show');
+        }
+
+        // 保存用户信息
+        function saveInfo() {
+            const token = localStorage.getItem('student_token');
+            const data = {
+                name: $('#edit-name').val().trim(),
+                phone: $('#edit-phone').val().trim(),
+                email: $('#edit-email').val().trim(),
+                gender: $('#edit-gender').val().trim()
+            };
+            
+            $.ajax({
+                url: '/api/student/profile',
+                type: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if (res.code === 200) {
+                        $('#editModal').modal('hide');
+                        loadProfile();
+                        alert('信息更新成功！');
+                    } else {
+                        alert('信息更新失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 打开修改密码模态框
+        function changePassword() {
+            $('#passwordModal').modal('show');
+        }
+
+        // 保存密码
+        function savePassword() {
+            const currentPassword = $('#current-password').val();
+            const newPassword = $('#new-password').val();
+            const confirmPassword = $('#confirm-password').val();
+            
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                alert('请填写所有密码字段');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                alert('两次输入的新密码不一致');
+                return;
+            }
+            
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: '/api/student/change-password',
+                type: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword
+                }),
+                success: function(res) {
+                    if (res.code === 200) {
+                        $('#passwordModal').modal('hide');
+                        $('#passwordForm')[0].reset();
+                        alert('密码修改成功，请重新登录！');
+                        localStorage.removeItem('student_token');
+                        localStorage.removeItem('userInfo');
+                        window.location.href = '/student/login';
+                    } else {
+                        alert('密码修改失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 添加地址
+        function addAddress() {
+            $('#address-id').val('');
+            $('#addressForm')[0].reset();
+            $('#addressModalLabel').text('添加收货地址');
+            $('#addressModal').modal('show');
+        }
+
+        // 编辑地址
+        function editAddress(addressId) {
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: `/api/student/addresses/${addressId}`,
+                type: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(res) {
+                    if (res.code === 200) {
+                        const addr = res.data;
+                        $('#address-id').val(addr.id);
+                        $('#address-name').val(addr.name);
+                        $('#address-phone').val(addr.phone);
+                        $('#address-detail').val(addr.address);
+                        $('#address-default').prop('checked', addr.is_default);
+                        $('#addressModalLabel').text('编辑收货地址');
+                        $('#addressModal').modal('show');
+                    } else {
+                        alert('获取地址信息失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 保存地址
+        function saveAddress() {
+            const id = $('#address-id').val();
+            const data = {
+                name: $('#address-name').val().trim(),
+                phone: $('#address-phone').val().trim(),
+                address: $('#address-detail').val().trim(),
+                is_default: $('#address-default').prop('checked')
+            };
+            
+            const token = localStorage.getItem('student_token');
+            let url = '/api/student/addresses';
+            let type = 'POST';
+            
+            if (id) {
+                url = `/api/student/addresses/${id}`;
+                type = 'PUT';
+            }
+            
+            $.ajax({
+                url: url,
+                type: type,
+                headers: { 'Authorization': `Bearer ${token}` },
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if (res.code === 200) {
+                        $('#addressModal').modal('hide');
+                        loadAddressList();
+                        loadProfile(); // 重新加载用户信息以更新默认地址显示
+                        alert('地址保存成功！');
+                    } else {
+                        alert('地址保存失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 删除地址
+        function deleteAddress(addressId) {
+            if (!confirm('确定要删除该地址吗？')) return;
+            
+            const token = localStorage.getItem('student_token');
+            $.ajax({
+                url: `/api/student/addresses/${addressId}`,
+                type: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(res) {
+                    if (res.code === 200) {
+                        loadAddressList();
+                        loadProfile(); // 重新加载用户信息以更新默认地址显示
+                        alert('地址删除成功！');
+                    } else {
+                        alert('地址删除失败：' + res.msg);
+                    }
+                }
+            });
+        }
+
+        // 绑定手机号
+        function bindPhone() {
+            alert('手机号绑定功能开发中...');
+        }
+
+        // 绑定邮箱
+        function bindEmail() {
+            alert('邮箱绑定功能开发中...');
+        }
+
+        // 格式化日期
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+
+    <!-- 编辑信息模态框 -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">编辑个人信息</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <div class="mb-3">
+                            <label for="edit-name" class="form-label">姓名</label>
+                            <input type="text" class="form-control" id="edit-name" placeholder="请输入姓名">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-phone" class="form-label">手机号</label>
+                            <input type="tel" class="form-control" id="edit-phone" placeholder="请输入手机号">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-email" class="form-label">邮箱</label>
+                            <input type="email" class="form-control" id="edit-email" placeholder="请输入邮箱">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-gender" class="form-label">性别</label>
+                            <select class="form-select" id="edit-gender">
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveInfo()">保存修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="passwordModalLabel">修改密码</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="passwordForm">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">当前密码</label>
+                            <input type="password" class="form-control" id="current-password" placeholder="请输入当前密码">
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="new-password" placeholder="请输入新密码">
+                            <div class="form-text text-muted">密码长度至少8位，包含字母和数字</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm-password" class="form-label">确认新密码</label>
+                            <input type="password" class="form-control" id="confirm-password" placeholder="请再次输入新密码">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="savePassword()">确认修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑地址模态框 -->
+    <div class="modal fade" id="addressModal" tabindex="-1" aria-labelledby="addressModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addressModalLabel">添加收货地址</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addressForm">
+                        <input type="hidden" id="address-id">
+                        <div class="mb-3">
+                            <label for="address-name" class="form-label">收货人姓名</label>
+                            <input type="text" class="form-control" id="address-name" placeholder="请输入收货人姓名">
+                        </div>
+                        <div class="mb-3">
+                            <label for="address-phone" class="form-label">联系电话</label>
+                            <input type="tel" class="form-control" id="address-phone" placeholder="请输入联系电话">
+                        </div>
+                        <div class="mb-3">
+                            <label for="address-detail" class="form-label">详细地址</label>
+                            <textarea class="form-control" id="address-detail" rows="3" placeholder="请输入详细地址"></textarea>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="address-default">
+                            <label class="form-check-label" for="address-default">设为默认地址</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAddress()">保存地址</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

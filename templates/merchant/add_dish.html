@@ -1,0 +1,244 @@
+{% extends "layouts/merchant_base.html" %}
+
+{% block title %}添加菜品 - 商户后台{% endblock %}
+
+{% block sidebar %}
+    <a class="nav-link" href="/merchant/index">
+        <i class="fas fa-tachometer-alt"></i> 控制台
+    </a>
+    <a class="nav-link" href="/merchant/orders">
+        <i class="fas fa-shopping-bag"></i> 订单管理
+    </a>
+    <a class="nav-link active" href="/merchant/dishes">
+        <i class="fas fa-utensils"></i> 菜品管理
+    </a>
+    <a class="nav-link" href="/merchant/statistics">
+        <i class="fas fa-chart-bar"></i> 经营统计
+    </a>
+    <a class="nav-link" href="/merchant/settings">
+        <i class="fas fa-cog"></i> 商铺设置
+    </a>
+{% endblock %}
+
+{% block header %}添加菜品{% endblock %}
+
+{% block username %}{{ merchant_info.merchant_name|default('商户用户') }}{% endblock %}
+
+{% block avatar %}{{ merchant_info.logo|default('/static/uploads/merchant/default.svg') }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5>添加新菜品</h5>
+    </div>
+    <div class="card-body">
+        <form id="addDishForm" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="dish_name">菜品名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="dish_name" name="dish_name" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="category">菜品分类 <span class="text-danger">*</span></label>
+                        <select class="form-control" id="category" name="category" required>
+                            <option value="">请选择分类</option>
+                            <option value="川菜">川菜</option>
+                            <option value="粤菜">粤菜</option>
+                            <option value="湘菜">湘菜</option>
+                            <option value="东北菜">东北菜</option>
+                            <option value="西北菜">西北菜</option>
+                            <option value="快餐">快餐</option>
+                            <option value="火锅">火锅</option>
+                            <option value="烧烤">烧烤</option>
+                            <option value="面食">面食</option>
+                            <option value="甜品">甜品</option>
+                            <option value="饮品">饮品</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="price">价格 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">¥</span>
+                            </div>
+                            <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="stock">库存数量</label>
+                        <input type="number" class="form-control" id="stock" name="stock" value="0" min="0">
+                        <small class="form-text text-muted">设置为0表示无限制库存</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">菜品描述</label>
+                <textarea class="form-control" id="description" name="description" rows="3" placeholder="请输入菜品的详细描述..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="dish_img">菜品图片</label>
+                <div class="input-group">
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="dish_img" name="dish_img" accept="image/*">
+                        <label class="custom-file-label" for="dish_img">选择图片</label>
+                    </div>
+                </div>
+                <small class="form-text text-muted">支持 JPG、PNG 格式，建议尺寸 400x300 像素</small>
+            </div>
+
+            <!-- 图片预览 -->
+            <div class="form-group d-none" id="imagePreview">
+                <label>图片预览</label>
+                <div class="mt-2">
+                    <img id="previewImg" src="" alt="菜品预览" style="max-width: 200px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="is_shelf" name="is_shelf" checked>
+                    <label class="custom-control-label" for="is_shelf">创建后立即上架</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save mr-1"></i> 保存菜品
+                </button>
+                <a href="/merchant/dishes" class="btn btn-secondary ml-2">
+                    <i class="fas fa-arrow-left mr-1"></i> 返回列表
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 加载提示 -->
+<div id="loadingModal" class="modal fade" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="sr-only">正在提交...</span>
+                </div>
+                <div>正在添加菜品，请稍候...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 成功提示 -->
+<div id="successModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                <h5>添加成功！</h5>
+                <p>菜品已成功添加到您的餐厅菜单中。</p>
+                <button type="button" class="btn btn-primary" onclick="goToDishes()">返回菜品列表</button>
+                <button type="button" class="btn btn-secondary" onclick="continueAdding()">继续添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 错误提示 -->
+<div id="errorModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <i class="fas fa-exclamation-circle text-danger mb-3" style="font-size: 3rem;"></i>
+                <h5>添加失败</h5>
+                <p id="errorMessage">操作失败，请稍后重试。</p>
+                <button type="button" class="btn btn-primary" data-dismiss="modal">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+    // 图片上传预览
+    $('#dish_img').change(function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#previewImg').attr('src', e.target.result);
+                $('#imagePreview').removeClass('d-none');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 表单提交
+    $('#addDishForm').submit(function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const is_shelf = $('#is_shelf').is(':checked');
+        formData.set('is_shelf', is_shelf);
+        
+        // 显示加载提示
+        $('#loadingModal').modal('show');
+        
+        // 提交表单
+        fetch('/api/merchant/dish/add', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('merchant_token')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            $('#loadingModal').modal('hide');
+            
+            if (data.code === 200) {
+                $('#successModal').modal('show');
+            } else {
+                $('#errorMessage').text(data.msg || '添加失败，请检查输入信息');
+                $('#errorModal').modal('show');
+            }
+        })
+        .catch(error => {
+            $('#loadingModal').modal('hide');
+            console.error('Error:', error);
+            $('#errorMessage').text('网络错误，请检查网络连接后重试');
+            $('#errorModal').modal('show');
+        });
+    });
+});
+
+// 跳转到菜品列表
+function goToDishes() {
+    window.location.href = '/merchant/dishes';
+}
+
+// 继续添加菜品
+function continueAdding() {
+    $('#successModal').modal('hide');
+    $('#addDishForm')[0].reset();
+    $('#imagePreview').addClass('d-none');
+}
+
+// 页面离开时清除token（如果需要）
+window.addEventListener('beforeunload', function() {
+    // 可以在此添加清理逻辑
+});
+</script>
+{% endblock %}

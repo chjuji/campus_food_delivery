@@ -1,354 +1,288 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+{% extends "layouts/merchant_base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商户后台 - 订单管理</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+{% block title %}商户后台 - 控制台{% endblock %}
 
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="#">商户后台</a>
-            <div class="ms-auto">
-                <span id="merchantName" class="me-3"></span>
-                <a href="/merchant/dish/add" class="btn btn-outline-primary me-2">添加菜品</a>
-                <button class="btn btn-outline-danger" onclick="logout()">退出</button>
-            </div>
+{% block sidebar %}
+<a class="nav-link active" href="#">
+    <i class="fas fa-tachometer-alt"></i> 控制台
+</a>
+<a class="nav-link" href="/merchant/orders">
+    <i class="fas fa-shopping-bag"></i> 订单管理
+</a>
+<a class="nav-link" href="/merchant/dishes">
+    <i class="fas fa-utensils"></i> 菜品管理
+</a>
+<a class="nav-link" href="/merchant/statistics">
+    <i class="fas fa-chart-bar"></i> 经营统计
+</a>
+<a class="nav-link" href="/merchant/settings">
+    <i class="fas fa-cog"></i> 商铺设置
+</a>
+{% endblock %}
+
+{% block header %}商户控制台{% endblock %}
+
+{% block username %}{{ merchant_info.merchant_name|default('商户用户') }}{% endblock %}
+
+{% block avatar %}{{ '/static/uploads/merchant/default.svg'}}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 统计卡片 -->
+    <div class="col-md-3">
+        <div class="stat-card bg-primary">
+            <i class="fas fa-clipboard-list float-end"></i>
+            <div class="stat-label">今日订单</div>
+            <h3 id="todayOrders">0</h3>
+            <small>较昨日 <span class="text-white opacity-80">+0</span></small>
         </div>
-    </nav>
-
-    <div class="container mt-4">
-        <!-- 标签页导航 -->
-        <ul class="nav nav-tabs" id="merchantTabs">
-            <li class="nav-item">
-                <a class="nav-link active" href="#orders" onclick="switchTab('orders')">待接单列表</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#dishes" onclick="switchTab('dishes')">菜品管理</a>
-            </li>
-        </ul>
-
-        <!-- 订单管理标签页 -->
-        <div id="ordersTab" class="tab-content">
-            <div class="tab-pane fade show active" id="orders">
-                <h4 class="mt-3">待接单列表</h4>
-                <div id="orderList" class="table-responsive"></div>
-            </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card bg-success">
+            <i class="fas fa-yen-sign float-end"></i>
+            <div class="stat-label">今日收入</div>
+            <h3 id="todayIncome">¥0.00</h3>
+            <small>较昨日 <span class="text-white opacity-80">+¥0.00</span></small>
         </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card bg-warning">
+            <i class="fas fa-clock float-end"></i>
+            <div class="stat-label">待处理订单</div>
+            <h3 id="pendingOrders">0</h3>
+            <small>需要及时处理</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card bg-info">
+            <i class="fas fa-store float-end"></i>
+            <div class="stat-label">在售菜品</div>
+            <h3 id="activeDishes">0</h3>
+            <small>共 {{ total_dishes|default(0) }} 个菜品</small>
+        </div>
+    </div>
+</div>
 
-        <!-- 菜品管理标签页 -->
-        <div id="dishesTab" class="tab-content">
-            <div class="tab-pane fade" id="dishes">
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <h4>菜品管理</h4>
-                    <button class="btn btn-primary" onclick="showAddDishModal()">添加菜品</button>
+<div class="row mt-4">
+    <!-- 最近订单 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>最近订单</h5>
+                <a href="/merchant/orders" class="text-primary text-sm">查看全部</a>
+            </div>
+            <div class="card-body">
+                <div id="recentOrders" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersTable">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div id="dishList" class="table-responsive"></div>
             </div>
         </div>
     </div>
 
-    <!-- 添加菜品模态框 -->
-    <div class="modal fade" id="addDishModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">添加菜品</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addDishForm" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label class="form-label">菜品名称</label>
-                            <input type="text" class="form-control" name="dish_name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">价格</label>
-                            <input type="number" class="form-control" name="price" step="0.01" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">分类</label>
-                            <input type="text" class="form-control" name="category" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">库存（0表示无限）</label>
-                            <input type="number" class="form-control" name="stock" value="0" min="0">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">描述</label>
-                            <textarea class="form-control" name="description" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">菜品图片</label>
-                            <input type="file" class="form-control" name="dish_img" accept="image/*">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="addDish()">添加</button>
+    <!-- 今日销售趋势 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>今日销售趋势</h5>
+            </div>
+            <div class="card-body">
+                <div id="salesChart" style="height: 250px;">
+                    <canvas id="chartCanvas"></canvas>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<div class="row mt-4">
+    <!-- 热销菜品 -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>热销菜品</h5>
+                <a href="/merchant/dishes" class="text-primary text-sm">管理菜品</a>
+            </div>
+            <div class="card-body">
+                <div id="popularDishes" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>菜品名称</th>
+                                <th>销量</th>
+                                <th>销售额</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="popularDishesTable">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
     <script>
-        let merchantId = 0;
-        let currentTab = 'orders';
-        
-        $(function () {
-            const token = localStorage.getItem('merchant_token');
-            const merchantInfo = JSON.parse(localStorage.getItem('merchantInfo'));
-            if (!token) {
-                window.location.href = '/merchant/login';
-                return;
-            }
-            merchantId = merchantInfo.id;
-            $('#merchantName').text(merchantInfo.name);
-            loadOrders();
-            // 定时刷新订单（每30秒）
-            setInterval(loadOrders, 30000);
-        });
+    let merchantId = 0;
+    let ctx = null;
+    let salesChart = null;
 
-        // 加载待接单
-        function loadOrders() {
-            const token = localStorage.getItem('merchant_token');
-            $.ajax({
-                url: '/api/merchant/orders?status=待接单', // 实际接口需补充
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function (res) {
-                    if (res.code === 200) {
-                        let html = `
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>订单号</th>
-                                        <th>学生信息</th>
-                                        <th>商品</th>
-                                        <th>金额</th>
-                                        <th>地址</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                        `;
+    $(document).ready(function () {
+        const token = localStorage.getItem('merchant_token');
+        const merchantInfo = JSON.parse(localStorage.getItem('merchantInfo'));
+        if (!token) {
+            window.location.href = '/merchant/login';
+            return;
+        }
+        merchantId = merchantInfo.id;
+
+        // 初始化图表
+        initChart();
+
+        // 加载数据
+        loadStatistics();
+        loadRecentOrders();
+        loadPopularDishes();
+
+        // 定时刷新数据
+        setInterval(loadStatistics, 60000);
+        setInterval(loadRecentOrders, 30000);
+    });
+
+    // 初始化销售趋势图
+    function initChart() {
+        // 简化图表初始化，避免使用真实的Chart对象
+        const canvas = document.getElementById('chartCanvas');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          // 绘制简单的文本提示，而不是创建实际的Chart
+          ctx.fillStyle = '#333';
+          ctx.font = '14px Arial';
+          ctx.fillText('图表数据：近期销售额', 20, 30);
+          ctx.fillText('(由于技术原因暂不显示图表)', 20, 50);
+        }
+    }
+
+    // 加载统计数据
+    function loadStatistics() {
+        const token = localStorage.getItem('merchant_token');
+        $.ajax({
+            url: '/api/merchant/statistics',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    const data = res.data;
+                    $('#todayOrders').text(data.today_orders || 0);
+                    $('#todayIncome').text('¥' + (data.today_income || 0).toFixed(2));
+                    $('#pendingOrders').text(data.pending_orders || 0);
+                    $('#activeDishes').text(data.active_dishes || 0);
+
+                    // 更新销售趋势图
+                    if (data.hourly_sales) {
+                        salesChart.data.datasets[0].data = data.hourly_sales;
+                        salesChart.update();
+                    }
+                }
+            }
+        });
+    }
+
+    // 加载最近订单
+    function loadRecentOrders() {
+        const token = localStorage.getItem('merchant_token');
+        $.ajax({
+            url: '/api/merchant/orders?limit=5&sort=latest',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    let html = '';
+                    if (res.data.length === 0) {
+                        html = '<tr><td colspan="4" class="text-center text-muted">暂无订单</td></tr>';
+                    } else {
                         res.data.forEach(order => {
+                            const statusClass = {
+                                '待接单': 'badge bg-warning',
+                                '制作中': 'badge bg-primary',
+                                '待配送': 'badge bg-info',
+                                '配送中': 'badge bg-secondary',
+                                '已完成': 'badge bg-success',
+                                '已取消': 'badge bg-danger'
+                            }[order.status] || 'badge bg-secondary';
+
                             html += `
                                 <tr>
                                     <td>${order.order_no}</td>
-                                    <td>${order.student_name}（${order.student_phone}）</td>
-                                    <td>${order.items.map(i => `${i.dish_name}x${i.quantity}`).join('<br>')}</td>
                                     <td>¥${order.pay_amount}</td>
-                                    <td>${order.address}</td>
+                                    <td><span class="${statusClass}">${order.status}</span></td>
+                                    <td>${formatDate(order.created_at)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    $('#recentOrdersTable').html(html);
+                }
+            }
+        });
+    }
+
+    // 加载热销菜品
+    function loadPopularDishes() {
+        const token = localStorage.getItem('merchant_token');
+        $.ajax({
+            url: '/api/merchant/dishes/popular?limit=10',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    let html = '';
+                    if (res.data.length === 0) {
+                        html = '<tr><td colspan="5" class="text-center text-muted">暂无销售数据</td></tr>';
+                    } else {
+                        res.data.forEach((dish, index) => {
+                            html += `
+                                <tr>
+                                    <td>${index + 1}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-success" onclick="acceptOrder(${order.id})">接单</button>
+                                        <img src="/static/${dish.img_url}" class="rounded me-2" width="30" height="30">
+                                        ${dish.dish_name}
+                                    </td>
+                                    <td>${dish.sales}</td>
+                                    <td>¥${(dish.total_amount || 0).toFixed(2)}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewDishDetail(${dish.id})">详情</button>
                                     </td>
                                 </tr>
                             `;
                         });
-                        html += `</tbody></table>`;
-                        $('#orderList').html(html);
                     }
+                    $('#popularDishesTable').html(html);
                 }
-            });
-        }
-
-        // 接单操作
-        function acceptOrder(orderId) {
-            const token = localStorage.getItem('merchant_token');
-            $.ajax({
-                url: `/api/merchant/order/accept/${orderId}`,
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert('接单成功');
-                        loadOrders(); // 刷新列表
-                    } else {
-                        alert(res.msg);
-                    }
-                }
-            });
-        }
-
-        // 标签页切换
-        function switchTab(tab) {
-            currentTab = tab;
-            
-            // 更新导航高亮
-            $('.nav-link').removeClass('active');
-            $(`.nav-link[href="#${tab}"]`).addClass('active');
-            
-            // 显示对应内容
-            $('.tab-pane').removeClass('show active');
-            $(`#${tab}`).addClass('show active');
-            
-            // 加载对应数据
-            if (tab === 'orders') {
-                loadOrders();
-            } else if (tab === 'dishes') {
-                loadDishes();
             }
-        }
+        });
+    }
 
-        // 显示添加菜品模态框
-        function showAddDishModal() {
-            $('#addDishForm')[0].reset();
-            $('#addDishModal').modal('show');
-        }
-
-        // 添加菜品
-        function addDish() {
-            const formData = new FormData($('#addDishForm')[0]);
-            const token = localStorage.getItem('merchant_token');
-            
-            $.ajax({
-                url: '/api/merchant/dish/add',
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert('菜品添加成功');
-                        $('#addDishModal').modal('hide');
-                        loadDishes(); // 刷新菜品列表
-                    } else {
-                        alert(res.msg);
-                    }
-                },
-                error: function () {
-                    alert('网络错误，添加失败');
-                }
-            });
-        }
-
-        // 加载菜品列表
-        function loadDishes() {
-            const token = localStorage.getItem('merchant_token');
-            $.ajax({
-                url: '/api/merchant/dishes',
-                type: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function (res) {
-                    if (res.code === 200) {
-                        renderDishTable(res.data);
-                    } else {
-                        alert('获取菜品列表失败：' + res.msg);
-                    }
-                }
-            });
-        }
-
-        // 渲染菜品表格
-        function renderDishTable(dishes) {
-            let html = `
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>菜品名称</th>
-                            <th>价格</th>
-                            <th>分类</th>
-                            <th>库存</th>
-                            <th>状态</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            if (dishes.length === 0) {
-                html += `
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">暂无菜品，请先添加菜品</td>
-                    </tr>
-                `;
-            } else {
-                dishes.forEach(dish => {
-                    const statusText = dish.is_shelf ? '已上架' : '已下架';
-                    const statusClass = dish.is_shelf ? 'text-success' : 'text-danger';
-                    const actionBtn = dish.is_shelf ? 
-                        `<button class="btn btn-sm btn-warning" onclick="toggleShelf(${dish.id}, false)">下架</button>` :
-                        `<button class="btn btn-sm btn-success" onclick="toggleShelf(${dish.id}, true)">上架</button>`;
-                    
-                    html += `
-                        <tr>
-                            <td>
-                                <img src="/static/${dish.img_url}" class="rounded me-2" width="40" height="40">
-                                ${dish.dish_name}
-                            </td>
-                            <td>¥${dish.price}</td>
-                            <td>${dish.category}</td>
-                            <td>${dish.stock === 0 ? '无限' : dish.stock}</td>
-                            <td class="${statusClass}">${statusText}</td>
-                            <td>
-                                ${actionBtn}
-                                <button class="btn btn-sm btn-danger ms-1" onclick="deleteDish(${dish.id})">删除</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
-            
-            html += '</tbody></table>';
-            $('#dishList').html(html);
-        }
-
-        // 上架/下架菜品
-        function toggleShelf(dishId, shelf) {
-            const action = shelf ? '上架' : '下架';
-            if (!confirm(`确定要${action}该菜品吗？`)) return;
-            
-            const token = localStorage.getItem('merchant_token');
-            $.ajax({
-                url: `/api/merchant/dish/${dishId}/shelf`,
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                data: JSON.stringify({ shelf: shelf }),
-                contentType: 'application/json',
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert(`${action}成功`);
-                        loadDishes(); // 刷新列表
-                    } else {
-                        alert(res.msg);
-                    }
-                }
-            });
-        }
-
-        // 删除菜品
-        function deleteDish(dishId) {
-            if (!confirm('确定要删除该菜品吗？此操作不可恢复！')) return;
-            
-            const token = localStorage.getItem('merchant_token');
-            $.ajax({
-                url: `/api/merchant/dish/${dishId}`,
-                type: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert('删除成功');
-                        loadDishes(); // 刷新列表
-                    } else {
-                        alert(res.msg);
-                    }
-                }
-            });
-        }
-
-        function logout() {
-            localStorage.removeItem('merchant_token');
-            localStorage.removeItem('merchantInfo');
-            window.location.href = '/merchant/login';
-        }
-    </script>
-</body>
-
-</html>
+    // 查看菜品详情
+    function viewDishDetail(dishId) {
+        window.location.href = `/merchant/dish/detail/${dishId}`;
+    }
+</script>
+{% endblock %}

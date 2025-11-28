@@ -6,7 +6,7 @@ class Complaint(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False, comment='学生ID')
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), comment='关联订单ID')
+    order_id = db.Column(db.Integer, db.ForeignKey('food_order.id'), comment='关联订单ID')
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchant.id'), comment='关联商户ID')
     content = db.Column(db.Text, nullable=False, comment='投诉内容')
     img_urls = db.Column(db.Text, comment='证据图片')

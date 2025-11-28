@@ -101,9 +101,9 @@
                         <p class="upload-hint">支持JPG、PNG格式，文件大小不超过5MB，选填（无执照或暂未上传可稍后补传）</p> -->
                     </div>
                     <div class="col-12">
-                        <label for="foodLicenseImg" class="form-label">食品经营许可证（餐饮类必填）</label>
+                        <label for="foodLicenseImg" class="form-label">商铺Logo</label>
                         <input type="file" class="form-control" id="foodLicenseImg" accept="image/jpeg,image/png">
-                        <p class="upload-hint">餐饮类商户需上传，支持JPG、PNG格式，文件大小不超过5MB</p>
+                        <p class="upload-hint">支持JPG、PNG格式，文件大小不超过5MB</p>
                     </div>
                 </div>
             </div>
@@ -158,7 +158,7 @@
                 formData.append('password', $('#password').val());
                 formData.append('address', $('#address').val());
                 formData.append('license_img', $('#licenseImg')[0].files[0]);
-                formData.append('food_license_img', $('#foodLicenseImg')[0].files[0]);
+                formData.append('logo', $('#foodLicenseImg')[0].files[0]);
                 
                 // 收集表单数据（文件上传需用FormData），仅在选择文件时才 append
                 // const formData = new FormData();
@@ -169,8 +169,8 @@
                 // formData.append('address', $('#address').val());
                 // const licenseFile = $('#licenseImg')[0].files[0];
                 // if (licenseFile) formData.append('license_img', licenseFile);
-                // const foodFile = $('#foodLicenseImg')[0].files[0];
-                // if (foodFile) formData.append('food_license_img', foodFile);
+                // const logoFile = $('#foodLicenseImg')[0].files[0];
+                // if (foodFile) formData.append('logo', foodFile);
 
                 // 提交注册请求（注意：文件上传需设置contentType: false）
                 $.ajax({

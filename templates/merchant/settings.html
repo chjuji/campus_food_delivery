@@ -1,0 +1,350 @@
+{% extends "layouts/merchant_base.html" %}
+
+{% block title %}商铺设置 - 商户后台{% endblock %}
+
+{% block sidebar %}
+    <a class="nav-link" href="/merchant/index">
+        <i class="fas fa-tachometer-alt"></i> 控制台
+    </a>
+    <a class="nav-link" href="/merchant/orders">
+        <i class="fas fa-shopping-bag"></i> 订单管理
+    </a>
+    <a class="nav-link" href="/merchant/dishes">
+        <i class="fas fa-utensils"></i> 菜品管理
+    </a>
+    <a class="nav-link" href="/merchant/statistics">
+        <i class="fas fa-chart-bar"></i> 经营统计
+    </a>
+    <a class="nav-link active" href="/merchant/settings">
+        <i class="fas fa-cog"></i> 商铺设置
+    </a>
+{% endblock %}
+
+{% block header %}商铺设置{% endblock %}
+
+{% block username %}{{ merchant_info.name|default('商户用户') }}{% endblock %}
+
+{% block avatar %}{{ merchant_info.logo|default('/static/uploads/merchant/default.svg') }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5>基本信息设置</h5>
+    </div<div class="card-body">
+        <form id="merchantSettingsForm">
+            <div class="form-group row mb-3">
+                <label for="merchantName" class="col-sm-2 col-form-label">商铺名称</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="merchantName" placeholder="请输入商铺名称">
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label for="merchantDescription" class="col-sm-2 col-form-label">商铺描述</label>
+                <div class="col-sm-10">
+                    <textarea class="form-control" id="merchantDescription" rows="3" placeholder="请输入商铺描述"></textarea>
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label for="merchantLogo" class="col-sm-2 col-form-label">商铺Logo</label>
+                <div class="col-sm-10">
+                    <!-- 合并选择文件和Logo预览 -->
+                    <div class="mb-2">
+                        <input type="file" class="form-control-file" id="merchantLogo">
+                        <small class="form-text text-muted">选择新图片将替换当前Logo，重新登录后可获取新Logo</small>
+                    </div>
+                    <!-- Logo预览容器 -->
+                    <div id="logoPreview" class="mt-2">
+                        <p class="small text-muted">当前Logo:</p>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label for="contactPhone" class="col-sm-2 col-form-label">联系电话</label>
+                <div class="col-sm-10">
+                    <input type="tel" class="form-control" id="contactPhone" placeholder="请输入联系电话">
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label for="businessHours" class="col-sm-2 col-form-label">营业时间</label>
+                <div class="col-sm-10">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label small">开始时间</label>
+                            <input type="time" class="form-control" id="startTime" value="09:00">
+                        </div>
+                        <div class="col-md-2 text-center align-self-end">
+                            <span class="form-text">至</span>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small">结束时间</label>
+                            <input type="time" class="form-control" id="endTime" value="22:00">
+                        </div>
+                    </div>
+                    <input type="hidden" id="businessHours" name="businessHours">
+                </div>
+            </div>
+
+            <div class="form-group row mb-3">
+                <label class="col-sm-2 col-form-label">商铺状态</label>
+                <div class="col-sm-10">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="merchantStatus" id="statusOpen" value="open" disabled>
+                        <label class="form-check-label" for="statusOpen">营业中</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="merchantStatus" id="statusClosed" value="closed" disabled>
+                        <label class="form-check-label" for="statusClosed">休息中</label>
+                    </div>
+                    <small class="text-muted ml-2">系统根据当前时间和营业时间自动设置</small>
+                </div>
+            </div>
+            <div class="form-group row">
+                <div class="col-sm-10 offset-sm-2">
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 更新营业时间的函数 - 移到全局作用域
+function updateBusinessHours() {
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    if (startTime && endTime) {
+        document.getElementById('businessHours').value = startTime + '-' + endTime;
+    }
+}
+
+// 加载设置数据
+window.onload = function() {
+    // console.log('商铺设置页面已加载');
+    
+    // 加载商户设置数据
+    loadMerchantSettings();
+    
+    // 监听时间选择器变化
+    document.getElementById('startTime').addEventListener('change', updateBusinessHours);
+    document.getElementById('endTime').addEventListener('change', updateBusinessHours);
+    
+    // 初始化营业时间
+    updateBusinessHours();
+    
+    // 表单提交事件
+    document.getElementById('merchantSettingsForm').onsubmit = function(e) {
+        e.preventDefault();
+        saveMerchantSettings();
+    };
+};
+
+// 加载商户设置数据
+function loadMerchantSettings() {
+    fetch('/api/merchant/settings/data', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('网络响应错误');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // console.log('获取设置成功:', data);
+        if (data.success) {
+            const settings = data.data;
+            
+            // 填充表单数据
+            document.getElementById('merchantName').value = settings.merchant_name || '';
+            document.getElementById('merchantDescription').value = settings.description || '';
+            document.getElementById('contactPhone').value = settings.contact_phone || '';
+            
+            // 显示商铺Logo
+            const logoContainer = document.getElementById('logoPreview');
+            if (logoContainer) {
+                // 创建或更新logo图片元素
+                let logoImg = logoContainer.querySelector('img');
+                if (!logoImg) {
+                    logoImg = document.createElement('img');
+                    logoImg.style.maxWidth = '100px';
+                    logoImg.style.maxHeight = '100px';
+                    logoContainer.appendChild(logoImg);
+                }
+                
+                if (settings.logo) {
+                    // 设置图片路径，确保路径正确
+                    const logoPath = settings.logo.startsWith('/') ? settings.logo : '/static/' + settings.logo;
+                    logoImg.src = logoPath;
+                    logoImg.style.display = 'block';
+                } else {
+                    logoImg.style.display = 'none';
+                    // 可以添加默认图片或提示信息
+                    if (!logoContainer.querySelector('.no-logo-message')) {
+                        const noLogoMsg = document.createElement('span');
+                        noLogoMsg.className = 'no-logo-message text-muted';
+                        noLogoMsg.textContent = '尚未设置Logo';
+                        logoContainer.appendChild(noLogoMsg);
+                    }
+                }
+            }
+            
+            // 添加文件选择事件监听，实现预览
+            const logoInput = document.getElementById('merchantLogo');
+            if (logoInput) {
+                logoInput.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const logoContainer = document.getElementById('logoPreview');
+                        if (logoContainer) {
+                            let logoImg = logoContainer.querySelector('img');
+                            if (!logoImg) {
+                                logoImg = document.createElement('img');
+                                logoImg.style.maxWidth = '100px';
+                                logoImg.style.maxHeight = '100px';
+                                logoContainer.appendChild(logoImg);
+                            }
+                            
+                            // 使用FileReader预览选择的图片
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                logoImg.src = e.target.result;
+                                logoImg.style.display = 'block';
+                                // 隐藏无Logo提示
+                                const noLogoMsg = logoContainer.querySelector('.no-logo-message');
+                                if (noLogoMsg) {
+                                    logoContainer.removeChild(noLogoMsg);
+                                }
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                });
+            }
+            
+            // 处理营业时间
+            if (settings.business_hours) {
+                try {
+                    // 尝试解析JSON格式的营业时间
+                    const hours = typeof settings.business_hours === 'string' && settings.business_hours.includes('{') 
+                        ? JSON.parse(settings.business_hours) 
+                        : { start: settings.business_hours.split('-')[0], end: settings.business_hours.split('-')[1] };
+                    document.getElementById('startTime').value = hours.start || hours[0] || '09:00';
+                    document.getElementById('endTime').value = hours.end || hours[1] || '22:00';
+                } catch (e) {
+                    console.error('解析营业时间失败:', e);
+                    // 尝试使用简单的分割方式
+                    if (typeof settings.business_hours === 'string') {
+                        const [startTime, endTime] = settings.business_hours.split('-');
+                        if (startTime) document.getElementById('startTime').value = startTime;
+                        if (endTime) document.getElementById('endTime').value = endTime;
+                    }
+                }
+                updateBusinessHours();
+            }
+            
+            // 处理商铺状态 - 增强健壮性
+            try {
+                // console.log('商铺状态数据:', settings.is_open, typeof settings.is_open);
+                
+                // 健壮地处理is_open值，考虑各种可能的类型和值
+                let isOpen = true; // 默认营业中
+                
+                // 检查is_open是否存在且有有效布尔值
+                if (settings.is_open !== undefined && settings.is_open !== null) {
+                    // 确保转换为布尔值，处理字符串"true"/"false"等情况
+                    isOpen = settings.is_open === true || settings.is_open === 'true' || settings.is_open === 1;
+                }
+                
+                // console.log('转换后的isOpen值:', isOpen);
+                
+                // 获取两个单选按钮元素
+                const openButton = document.getElementById('statusOpen');
+                const closedButton = document.getElementById('statusClosed');
+                
+                // console.log('找到的按钮元素:', { openButton, closedButton });
+                
+                // 明确设置两个按钮的状态
+                if (openButton && closedButton) {
+                    openButton.checked = isOpen;
+                    closedButton.checked = !isOpen;
+                    // console.log('已设置单选按钮状态:', { open: isOpen, closed: !isOpen });
+                }
+            } catch (e) {
+                console.error('处理商铺状态时出错:', e);
+                // 默认设置为营业中
+                const statusOpenBtn = document.getElementById('statusOpen');
+                if (statusOpenBtn) {
+                    statusOpenBtn.checked = true;
+                    console.log('错误处理: 默认设置为营业中');
+                }
+            }
+        }
+    })
+    // .catch(error => {
+    //     console.error('加载设置失败:', error);
+    //     alert('获取设置失败，请刷新页面重试');
+    // });
+}
+
+// 保存商户设置
+function saveMerchantSettings() {
+    // 表单验证
+    const merchantName = document.getElementById('merchantName').value.trim();
+    const contactPhone = document.getElementById('contactPhone').value.trim();
+    
+    // if (!merchantName) {
+    //     alert('请输入商铺名称');
+    //     return;
+    // }
+    
+    // if (!contactPhone) {
+    //     alert('请输入联系电话');
+    //     return;
+    // }
+    
+    // 使用FormData而不是JSON，以便支持文件上传
+    const formData = new FormData();
+    formData.append('merchant_name', merchantName);
+    formData.append('description', document.getElementById('merchantDescription').value.trim());
+    formData.append('contact_phone', contactPhone);
+    formData.append('business_hours', document.getElementById('businessHours').value);
+    
+    // 添加Logo文件（如果有选择新文件）
+    const logoFile = document.getElementById('merchantLogo').files[0];
+    if (logoFile) {
+        formData.append('logo', logoFile);
+    }
+    
+    // console.log('保存设置数据:', formData);
+    
+    // 发送请求，不设置Content-Type，让浏览器自动设置
+    fetch('/api/merchant/settings', {
+        method: 'PUT',
+        credentials: 'include',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('网络响应错误');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // console.log('保存设置结果:', data);
+        if (data.code === 200 || data.success) {
+            alert('设置已保存成功，重新登陆可获取新的Logo头像');
+        } else {
+            alert('保存失败：' + (data.msg || data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('保存设置失败:', error);
+        alert('保存失败，请稍后重试');
+    });
+}
+</script>
+{% endblock %}

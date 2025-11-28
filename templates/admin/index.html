@@ -61,21 +61,21 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="switchTab('rejected')">
-                            <i class="bi bi-x-circle me-2"></i>已驳回商户
+                            <i class="bi bi-x-circle me-2"></i>已驳回（已下架）商户
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/api/admin/students">
+                        <a class="nav-link" href="#" onclick="switchTab('students')">
                             <i class="bi bi-people me-2"></i>学生用户管理
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/api/admin/orders">
+                        <a class="nav-link" href="#" onclick="switchTab('orders')">
                             <i class="bi bi-box-seam me-2"></i>订单统计
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/api/admin/settings">
+                        <a class="nav-link" onclick="switchTab('settings')" style="cursor: pointer;">
                             <i class="bi bi-gear me-2"></i>平台设置
                         </a>
                     </li>
@@ -93,31 +93,187 @@
                     <h3><i class="bi bi-list-check me-2"></i>待审核商户名单</h3>
                     <span class="badge bg-warning" id="pendingCount">0</span> <!-- 待审核数量 -->
                 </div>
+                <!-- 订单统计过滤选项 -->
 
-                <!-- 待审核商户表格 -->
-                <div class="card">
+                <!-- 平台设置容器 -->
+                <div id="settingsContainer" class="card mt-4" style="display: none;">
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>序号</th>
-                                        <th>店铺名称</th>
-                                        <th>联系人</th>
-                                        <th>联系电话</th>
-                                        <th>地址</th>
-                                        <th>申请时间</th>
-                                        <th>资质证明</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="pendingMerchantsTable">
-                                    <!-- 表格内容通过JS动态填充 -->
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted">加载中...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <!-- 分类标签页 -->
+                        <div class="settings-tabs mb-4">
+                            <button class="btn btn-primary me-2" onclick="switchSettingsTab('basic')">基本信息</button>
+                            <button class="btn btn-outline-primary me-2"
+                                onclick="switchSettingsTab('order')">订单设置</button>
+                            <button class="btn btn-outline-primary me-2"
+                                onclick="switchSettingsTab('merchant')">商户设置</button>
+                            <button class="btn btn-outline-primary me-2"
+                                onclick="switchSettingsTab('system')">系统设置</button>
+                        </div>
+
+                        <!-- 设置内容区域 -->
+                        <div id="settingsContent">
+                            <div class="text-center py-5">
+                                <p class="text-muted">请选择设置分类</p>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="mt-4 d-flex justify-content-end">
+                            <button class="btn btn-outline-secondary me-2" onclick="resetSettings()">重置</button>
+                            <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4" id="orderFilters" style="display: none;">
+                    <div class="card p-3 bg-light">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-3">
+                                <label for="startDate" class="form-label">开始日期</label>
+                                <input type="date" class="form-control" id="startDate">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="endDate" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="endDate">
+                            </div>
+                            <div class="col-md-2 align-self-end">
+                                <button class="btn btn-primary w-100" onclick="loadOrderData()">
+                                    <i class="bi bi-search"></i> 查询
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 订单统计容器 -->
+                <div id="orderStatsContainer" style="display: none;">
+                    <div class="row mt-4 mb-4">
+                        <div class="col-md-2">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted">待处理订单</h5>
+                                    <p class="card-text display-4" id="pendingOrders">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted">处理中订单</h5>
+                                    <p class="card-text display-4" id="processingOrders">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted">已送达订单</h5>
+                                    <p class="card-text display-4" id="deliveredOrders">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted">订单总数</h5>
+                                    <p class="card-text display-4" id="totalOrders">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted">已完成订单</h5>
+                                    <p class="card-text display-4" id="completedOrders">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted">已取消订单</h5>
+                                    <p class="card-text display-4" id="cancelledOrders">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-success text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">总销售额</h5>
+                                    <p class="card-text display-4" id="totalSales">¥0.00</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-primary text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">平均订单价值</h5>
+                                    <p class="card-text display-4" id="avgOrderValue">¥0.00</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据表格容器 -->
+                <div id="dataTableContainer">
+                    <div class="card">
+                        <div class="card-body">
+                            <!-- 学生用户管理的过滤选项 -->
+                            <div class="mb-3" id="studentFilters" style="display: none;">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary"
+                                        onclick="loadStudentData(1)">全部用户</button>
+                                    <button type="button" class="btn btn-outline-success"
+                                        onclick="loadStudentData(2)">已激活</button>
+                                    <button type="button" class="btn btn-outline-danger"
+                                        onclick="loadStudentData(3)">已禁用</button>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr id="merchantTableHeader">
+                                            <th>序号</th>
+                                            <th>店铺名称</th>
+                                            <th>联系人</th>
+                                            <th>联系电话</th>
+                                            <th>地址</th>
+                                            <th>申请时间</th>
+                                            <th>资质证明</th>
+                                            <th>状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                        <tr id="studentTableHeader" style="display: none;">
+                                            <th>序号</th>
+                                            <th>学号</th>
+                                            <th>姓名</th>
+                                            <th>手机号</th>
+                                            <th>注册时间</th>
+                                            <th>头像</th>
+                                            <th>状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                        <tr id="orderTableHeader" style="display: none;">
+                                            <th>序号</th>
+                                            <th>订单号</th>
+                                            <th>学生ID</th>
+                                            <th>商户ID</th>
+                                            <th>总金额</th>
+                                            <th>实付金额</th>
+                                            <th>优惠金额</th>
+                                            <th>支付方式</th>
+                                            <th>订单状态</th>
+                                            <th>创建时间</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dataTableBody">
+                                        <!-- 表格内容通过JS动态填充 -->
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted">加载中...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -147,7 +303,7 @@
 
     <script>
         let currentTab = 'pending'; // 当前选中的标签页
-        
+
         // 页面加载时获取商户列表
         $(document).ready(function () {
             // 获取JWT Token（从Cookie或LocalStorage中，根据登录逻辑调整）
@@ -162,26 +318,70 @@
 
             // 加载默认标签页（待审核商户）
             loadMerchantData('pending');
+            // 默认显示数据表格容器
+            $('#dataTableContainer').show();
+            $('#orderStatsContainer').hide();
+            $('#settingsContainer').hide();
         });
-        
+
         // 切换标签页
         function switchTab(tabType) {
             if (currentTab === tabType) return; // 如果已经是当前标签页，不重复加载
-            
+
             // 更新导航高亮
             $('.nav-link.active').removeClass('active');
             $(`.nav-link[onclick*="${tabType}"]`).addClass('active');
-            
+
             currentTab = tabType;
-            loadMerchantData(tabType);
+
+            // 隐藏所有主要内容容器
+            $('#dataTableContainer').hide();
+            $('#orderStatsContainer').hide();
+            $('#settingsContainer').hide();
+            $('#orderFilters').hide();
+            $('#studentFilters').hide();
+
+            // 清空表格内容
+            $('#dataTableBody').empty();
+
+            // 根据标签显示对应的内容
+            if (tabType === 'students') {
+                $('#dataTableContainer').show();
+                $('#studentFilters').show();
+                $('#merchantTableHeader').hide();
+                $('#studentTableHeader').show();
+                $('#orderTableHeader').hide();
+                loadStudentData(1); // 默认显示全部用户
+                $('h3').html('<i class="bi bi-people me-2"></i>学生用户管理');
+            } else if (tabType === 'orders') {
+                $('#orderStatsContainer').show();
+                $('#dataTableContainer').show();
+                $('#orderFilters').show();
+                $('#merchantTableHeader').hide();
+                $('#studentTableHeader').hide();
+                $('#orderTableHeader').show();
+                loadOrderData(); // 加载订单统计数据
+                $('h3').html('<i class="bi bi-box-seam me-2"></i>订单统计');
+            } else if (tabType === 'settings') {
+                $('#settingsContainer').show();
+                loadSettingsData(); // 加载平台设置数据
+                $('h3').html('<i class="bi bi-gear me-2"></i>平台设置');
+            } else {
+                // 商户相关标签页
+                $('#dataTableContainer').show();
+                $('#merchantTableHeader').show();
+                $('#studentTableHeader').hide();
+                $('#orderTableHeader').hide();
+                loadMerchantData(tabType);
+            }
         }
-        
+
         // 加载商户数据
         function loadMerchantData(tabType) {
             let apiUrl, titleText, countBadge = $('#pendingCount');
-            
+
             // 根据标签页类型设置API接口和标题
-            switch(tabType) {
+            switch (tabType) {
                 case 'pending':
                     apiUrl = '/api/admin/pending_merchants';
                     titleText = '待审核商户名单';
@@ -194,7 +394,7 @@
                     break;
                 case 'rejected':
                     apiUrl = '/api/admin/get_rejected_merchants';
-                    titleText = '已驳回商户名单';
+                    titleText = '已驳回（已下架）商户名单';
                     countBadge.hide();
                     break;
                 default:
@@ -202,7 +402,7 @@
                     titleText = '待审核商户名单';
                     countBadge.show();
             }
-            
+
             // 更新页面标题
             $('h3').html(`<i class="bi bi-list-check me-2"></i>${titleText}`);
 
@@ -239,7 +439,7 @@
 
         // 渲染商户表格
         function renderMerchantTable(merchants, tabType) {
-            const tableBody = $('#pendingMerchantsTable');
+            const tableBody = $('#dataTableBody');
             tableBody.empty();  // 清空现有内容
 
             // 根据标签页类型显示不同的空状态提示
@@ -247,13 +447,13 @@
             if (tabType === 'approved') {
                 emptyText = '暂无已通过商户';
             } else if (tabType === 'rejected') {
-                emptyText = '暂无已驳回商户';
+                emptyText = '暂无已驳回（已下架）商户';
             }
 
             if (merchants.length === 0) {
                 tableBody.append(`
                     <tr>
-                        <td colspan="8" class="text-center text-muted">${emptyText}</td>
+                        <td colspan="9" class="text-center text-muted">${emptyText}</td>
                     </tr>
                 `);
                 return;
@@ -261,6 +461,18 @@
 
             // 遍历商户数据，生成表格行
             merchants.forEach((merchant, index) => {
+                // 状态标签显示
+                let statusLabel = '已通过';
+                let statusClass = 'bg-success';
+                if (tabType === 'pending') {
+                    statusLabel = '待审核';
+                    statusClass = 'bg-warning text-dark';
+                } else if (tabType === 'rejected') {
+                    statusLabel = '已驳回（已下架）';
+                    statusClass = 'bg-danger';
+                }
+                const statusBadge = `<span class="badge ${statusClass}">${statusLabel}</span>`;
+
                 // 根据标签页类型决定是否显示操作按钮
                 let actionButtons = '';
                 if (tabType === 'pending') {
@@ -275,17 +487,28 @@
                             驳回
                         </button>
                     `;
-                } else {
-                    // 已通过/已驳回页面不显示操作按钮或显示状态标签
-                    let statusLabel = '已通过';
-                    let statusClass = 'bg-success';
-                    if (tabType === 'rejected') {
-                        statusLabel = '已驳回';
-                        statusClass = 'bg-danger';
-                    }
-                    actionButtons = `<span class="badge ${statusClass}">${statusLabel}</span>`;
+                } else if (tabType === 'approved') {
+                    // 已通过页面显示下架按钮
+                    actionButtons = `
+                        <button class="btn btn-sm btn-warning" 
+                                onclick="updateMerchantStatus(${merchant.id}, 2)">
+                            下架
+                        </button>
+                    `;
+                } else if (tabType === 'rejected') {
+                    // 已驳回页面显示上架和删除按钮
+                    actionButtons = `
+                        <button class="btn btn-sm btn-success me-1" 
+                                onclick="updateMerchantStatus(${merchant.id}, 1)">
+                            上架
+                        </button>
+                        <button class="btn btn-sm btn-danger" 
+                                onclick="deleteMerchant(${merchant.id})">
+                            删除
+                        </button>
+                    `;
                 }
-                
+
                 const row = `
                     <tr>
                         <td>${index + 1}</td>
@@ -299,17 +522,155 @@
                             <img src="/static/${merchant.license_img}" class="license-img rounded" 
                                  onclick="showLicense('/static/${merchant.license_img}')" 
                                  alt="营业执照">
-                            ${merchant.food_license_img ?
-                        `<br><img src="/static/${merchant.food_license_img}" class="license-img rounded mt-2" 
-                                    onclick="showLicense('/static/${merchant.food_license_img}')" 
-                                    alt="食品经营许可证">` : ''}
+                            ${merchant.logo ?
+                        `<br><img src="/static/${merchant.logo}" class="license-img rounded mt-2"
+                    onclick="showLicense('/static/${merchant.logo}')" 
+                                    alt="商铺Logo">` : ''}
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td>${actionButtons}</td>
+                    </tr>
+                `;
+                tableBody.append(row);
+            });
+        }
+
+        // 加载学生数据
+        function loadStudentData(filterType) {
+            // 更新页面标题
+            $('h3').html('<i class="bi bi-people me-2"></i>学生用户管理');
+            $('#pendingCount').hide();
+
+            let apiUrl = '/api/admin/students';
+            // 根据过滤类型添加查询参数
+            if (filterType === 2) {
+                apiUrl = '/api/admin/students?is_active=1';
+            } else if (filterType === 3) {
+                apiUrl = '/api/admin/students?is_active=0';
+            }
+
+            // 请求学生数据
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: apiUrl,
+                type: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`  // JWT认证头
+                },
+                success: function (res) {
+                    if (res.code === 200) {
+                        const students = res.data;
+                        renderStudentTable(students);  // 渲染表格
+                    } else {
+                        alert('获取数据失败：' + res.msg);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('请求失败:', xhr.responseText);
+                    // 若 token 无效（401），强制跳转登录
+                    if (xhr.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        window.location.href = '/admin/login';
+                    }
+                }
+            });
+        }
+
+        // 渲染学生表格
+        function renderStudentTable(students) {
+            const tableBody = $('#dataTableBody');
+            tableBody.empty();  // 清空现有内容
+
+            if (students.length === 0) {
+                tableBody.append(`
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">暂无学生用户数据</td>
+                    </tr>
+                `);
+                return;
+            }
+
+            // 遍历学生数据，生成表格行
+            students.forEach((student, index) => {
+                // 状态标签
+                let statusLabel = '已激活';
+                let statusClass = 'bg-success';
+                let actionText = '禁用';
+                let actionClass = 'btn-danger';
+                let newStatus = false;
+
+                if (!student.is_active) {
+                    statusLabel = '已禁用';
+                    statusClass = 'bg-danger';
+                    actionText = '激活';
+                    actionClass = 'btn-success';
+                    newStatus = true;
+                }
+
+                // 头像显示
+                let avatarHtml = '';
+                if (student.avatar && student.avatar !== 'default_avatar.jpg') {
+                    avatarHtml = `<img src="/static/uploads/avatar/${student.avatar}" class="license-img rounded" 
+                                 onclick="showLicense('/static/uploads/avatar/${student.avatar}')" 
+                                 alt="头像">`;
+                } else {
+                    avatarHtml = '<i class="bi bi-person-circle text-muted" style="font-size: 2rem;"></i>';
+                }
+
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.student_id}</td>
+                        <td>${student.name}</td>
+                        <td>${student.phone}</td>
+                        <td>${student.create_time}</td>
+                        <td>${avatarHtml}</td>
+                        <td>
+                            <span class="badge ${statusClass}">${statusLabel}</span>
                         </td>
                         <td>
-                            ${actionButtons}
+                            <button class="btn btn-sm ${actionClass}" 
+                                    onclick="updateStudentStatus(${student.id}, ${newStatus})">
+                                ${actionText}
+                            </button>
                         </td>
                     </tr>
                 `;
                 tableBody.append(row);
+            });
+        }
+
+        // 更新学生状态
+        function updateStudentStatus(studentId, newStatus) {
+            const actionText = newStatus ? '激活' : '禁用';
+            if (!confirm(`确定要${actionText}该学生账户吗？`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: '/api/admin/update_student_status',
+                type: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    id: studentId,
+                    is_active: newStatus
+                }),
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('操作成功完成');
+                        // 重新加载当前标签页的数据
+                        loadStudentData(1); // 重新加载全部用户
+                    } else {
+                        alert('操作失败：' + res.msg);
+                    }
+                },
+                error: function () {
+                    alert('网络错误，操作失败');
+                }
             });
         }
 
@@ -354,9 +715,339 @@
             });
         }
 
+        // 加载订单统计数据
+        function loadOrderData() {
+            let apiUrl = '/api/admin/orders';
+
+            // 获取日期参数
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            // 添加查询参数
+            if (startDate) {
+                apiUrl += `?start_date=${startDate}`;
+                if (endDate) {
+                    apiUrl += `&end_date=${endDate}`;
+                }
+            } else if (endDate) {
+                apiUrl += `?end_date=${endDate}`;
+            }
+
+            // 请求订单统计数据
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: apiUrl,
+                type: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`  // JWT认证头
+                },
+                success: function (res) {
+                    if (res.code === 200) {
+                        const data = res.data;
+
+                        // 更新统计卡片数据
+                        updateOrderStatsCards(data.summary);
+
+                        // 渲染订单表格
+                        renderOrderTable(data.orders);
+                    } else {
+                        alert('获取数据失败：' + res.msg);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('请求失败:', xhr.responseText);
+                    // 若 token 无效（401），强制跳转登录
+                    if (xhr.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        window.location.href = '/admin/login';
+                    }
+                }
+            });
+        }
+
+        // 更新订单统计卡片
+        function updateOrderStatsCards(summary) {
+            $('#totalOrders').text(summary.total_orders);
+            $('#completedOrders').text(summary.completed_orders);
+            $('#cancelledOrders').text(summary.cancelled_orders);
+            $('#totalSales').text(`¥${summary.total_sales.toFixed(2)}`);
+            $('#avgOrderValue').text(`¥${summary.average_order_value.toFixed(2)}`);
+        }
+
+        // 渲染订单表格
+        function renderOrderTable(orders) {
+            const tableBody = $('#dataTableBody');
+            tableBody.empty();  // 清空现有内容
+
+            if (orders.length === 0) {
+                tableBody.append(`
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">暂无订单数据</td>
+                    </tr>
+                `);
+                return;
+            }
+
+            // 遍历订单数据，生成表格行
+            orders.forEach((order, index) => {
+                // 根据订单状态设置样式
+                let statusClass = '';
+                switch (order.status) {
+                    case '已完成':
+                        statusClass = 'bg-success text-white';
+                        break;
+                    case '已取消':
+                        statusClass = 'bg-danger text-white';
+                        break;
+                    case '待接单':
+                        statusClass = 'bg-warning text-dark';
+                        break;
+                    case '待配送':
+                        statusClass = 'bg-info text-white';
+                        break;
+                }
+
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${order.order_no}</td>
+                        <td>${order.student_id}</td>
+                        <td>${order.merchant_id}</td>
+                        <td>¥${order.total_amount.toFixed(2)}</td>
+                        <td>¥${order.pay_amount.toFixed(2)}</td>
+                        <td>¥${order.discount_amount.toFixed(2)}</td>
+                        <td>${order.pay_type}</td>
+                        <td>
+                            <span class="badge ${statusClass}">${order.status}</span>
+                        </td>
+                        <td>${order.create_time}</td>
+                    </tr>
+                `;
+                tableBody.append(row);
+            });
+        }
+
+        // 更新商户状态（上架/下架）
+        function updateMerchantStatus(merchantId, newStatus) {
+            const actionText = newStatus === 1 ? '上架' : '下架';
+            if (!confirm(`确定要${actionText}该商户吗？`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: '/api/admin/update_merchant_status',
+                type: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    id: merchantId,
+                    status: newStatus
+                }),
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('操作成功完成');
+                        // 重新加载当前标签页的数据
+                        loadMerchantData(currentTab);
+                    } else {
+                        alert('操作失败：' + res.msg);
+                    }
+                },
+                error: function () {
+                    alert('网络错误，操作失败');
+                }
+            });
+        }
+
+        // 删除商户
+        function deleteMerchant(merchantId) {
+            if (!confirm('确定要删除该商户吗？此操作不可恢复！')) {
+                return;
+            }
+
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: '/api/admin/delete_merchant',
+                type: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    id: merchantId
+                }),
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('商户已成功删除');
+                        // 重新加载当前标签页的数据
+                        loadMerchantData(currentTab);
+                    } else {
+                        alert('删除失败：' + res.msg);
+                    }
+                },
+                error: function () {
+                    alert('网络错误，删除失败');
+                }
+            });
+        }
+
         function logout() {
             localStorage.removeItem('admin_token'); // 清除 token
             window.location.href = '/admin/login';
+        }
+
+        // 平台设置相关变量
+        let settingsData = {};
+        let currentSettingsTab = 'basic';
+        let originalSettings = {};
+
+        // 加载平台设置数据
+        function loadSettingsData() {
+            $.ajax({
+                url: '/api/admin/settings',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('admin_token')
+                },
+                success: function (response) {
+                    if (response.code === 200) {
+                        settingsData = response.data;
+                        // 保存原始数据用于重置
+                        originalSettings = JSON.parse(JSON.stringify(response.data));
+                        // 默认显示基本信息标签
+                        switchSettingsTab('basic');
+                    } else {
+                        alert(response.msg || '获取设置失败');
+                    }
+                },
+                error: function () {
+                    alert('网络错误，请稍后重试');
+                }
+            });
+        }
+
+        // 切换设置分类标签
+        function switchSettingsTab(tabName) {
+            currentSettingsTab = tabName;
+
+            // 更新按钮样式
+            $('.settings-tabs button').removeClass('btn-primary').addClass('btn-outline-primary');
+            $(`.settings-tabs button[onclick="switchSettingsTab('${tabName}')"]`).removeClass('btn-outline-primary').addClass('btn-primary');
+
+            // 渲染对应分类的设置面板
+            renderSettingsPanel(tabName);
+        }
+
+        // 渲染设置面板
+        function renderSettingsPanel(category) {
+            const configs = settingsData[category] || [];
+            let html = '';
+
+            if (configs.length === 0) {
+                html = '<div class="text-center py-5"><p class="text-muted">暂无设置项</p></div>';
+            } else {
+                html = '<div class="row">';
+
+                configs.forEach(config => {
+                    html += `<div class="col-md-6 mb-4">
+                        <div class="form-group">
+                            <label for="${config.config_key}" class="font-weight-medium">${config.description}</label>
+                            ${getInputHtml(config)}
+                            <small class="form-text text-muted">键名: ${config.config_key}</small>
+                        </div>
+                    </div>`;
+                });
+
+                html += '</div>';
+            }
+
+            $('#settingsContent').html(html);
+        }
+
+        // 根据配置类型生成输入框
+        function getInputHtml(config) {
+            const value = config.config_value || '';
+
+            switch (config.config_type) {
+                case 'number':
+                    return `<input type="number" id="${config.config_key}" class="form-control mt-1" value="${value}" config-key="${config.config_key}" config-type="${config.config_type}">`;
+                case 'boolean':
+                    return `<div class="form-check form-switch mt-2">
+                        <input type="checkbox" id="${config.config_key}" class="form-check-input" ${value === 'true' ? 'checked' : ''} config-key="${config.config_key}" config-type="${config.config_type}">
+                    </div>`;
+                default: // string
+                    return `<input type="text" id="${config.config_key}" class="form-control mt-1" value="${value}" config-key="${config.config_key}" config-type="${config.config_type}">`;
+            }
+        }
+
+        // 保存设置
+        function saveSettings() {
+            let updatedConfigs = [];
+
+            // 收集所有设置项的值
+            $('#settingsContent input').each(function () {
+                const configKey = $(this).attr('config-key');
+                const configType = $(this).attr('config-type');
+                let configValue;
+
+                if (configType === 'boolean') {
+                    configValue = $(this).is(':checked') ? 'true' : 'false';
+                } else {
+                    configValue = $(this).val();
+                }
+
+                updatedConfigs.push({
+                    config_key: configKey,
+                    config_value: configValue
+                });
+            });
+
+            // 发送保存请求
+            $.ajax({
+                url: '/api/admin/update_settings',
+                type: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('admin_token'),
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(updatedConfigs),
+                success: function (response) {
+                    if (response.code === 200) {
+                        alert(response.msg || '保存成功');
+                        // 更新settingsData
+                        updatedConfigs.forEach(config => {
+                            // 找到对应的配置项并更新
+                            for (const category in settingsData) {
+                                const configs = settingsData[category];
+                                for (let i = 0; i < configs.length; i++) {
+                                    if (configs[i].config_key === config.config_key) {
+                                        configs[i].config_value = config.config_value;
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                        // 更新原始数据
+                        originalSettings = JSON.parse(JSON.stringify(settingsData));
+                    } else {
+                        alert(response.msg || '保存失败');
+                    }
+                },
+                error: function () {
+                    alert('网络错误，请稍后重试');
+                }
+            });
+        }
+
+        // 重置设置
+        function resetSettings() {
+            if (confirm('确定要重置当前设置吗？')) {
+                settingsData = JSON.parse(JSON.stringify(originalSettings));
+                renderSettingsPanel(currentSettingsTab);
+                alert('设置已重置');
+            }
         }
     </script>
 </body>

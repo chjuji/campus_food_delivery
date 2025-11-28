@@ -2,7 +2,7 @@ from datetime import datetime
 from extensions import db
 
 class Order(db.Model):
-    __tablename__ = 'order'
+    __tablename__ = 'food_order'  # 修改为非保留关键字
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     order_no = db.Column(db.String(32), unique=True, nullable=False, comment='订单号')
@@ -10,6 +10,8 @@ class Order(db.Model):
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchant.id'), nullable=False, comment='商户ID')
     total_amount = db.Column(db.Float, nullable=False, comment='总金额')
     pay_amount = db.Column(db.Float, nullable=False, comment='实付金额')
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id'), nullable=True, comment='优惠券ID')
+    discount_amount = db.Column(db.Float, default=0, nullable=False, comment='优惠金额')
     pay_type = db.Column(db.String(20), nullable=False, comment='支付方式')
     status = db.Column(db.String(20), nullable=False, comment='状态：待接单/待配送/已完成/已取消')
     address = db.Column(db.String(255), nullable=False, comment='收货地址')
@@ -20,7 +22,7 @@ class Order(db.Model):
 
     # 关联关系
     order_items = db.relationship('OrderItem', backref='order', lazy=True)
-    comment = db.relationship('Comment', backref='order', uselist=False)
+    comment = db.relationship('Comment', backref='order', foreign_keys='Comment.order_id', uselist=False)
     refund = db.relationship('Refund', backref='order', uselist=False)
 
     def __repr__(self):
@@ -34,6 +36,8 @@ class Order(db.Model):
             'merchant_id': self.merchant_id,
             'total_amount': self.total_amount,
             'pay_amount': self.pay_amount,
+            'coupon_id': self.coupon_id,
+            'discount_amount': self.discount_amount,
             'pay_type': self.pay_type,
             'status': self.status,
             'address': self.address,
@@ -44,10 +48,10 @@ class Order(db.Model):
         }
 
 class OrderItem(db.Model):
-    __tablename__ = 'order_item'
+    __tablename__ = 'food_order_item'  # 修改为非保留关键字
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, comment='订单ID')
+    order_id = db.Column(db.Integer, db.ForeignKey('food_order.id'), nullable=False, comment='订单ID')
     dish_id = db.Column(db.Integer, db.ForeignKey('dish.id'), nullable=False, comment='菜品ID')
     quantity = db.Column(db.Integer, nullable=False, comment='数量')
     price = db.Column(db.Float, nullable=False, comment='购买时单价')
@@ -65,10 +69,10 @@ class OrderItem(db.Model):
         }
 
 class Refund(db.Model):
-    __tablename__ = 'refund'
+    __tablename__ = 'food_refund'  # 修改为非保留关键字
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, comment='订单ID')
+    order_id = db.Column(db.Integer, db.ForeignKey('food_order.id'), nullable=False, comment='订单ID')
     refund_amount = db.Column(db.Float, nullable=False, comment='退款金额')
     reason = db.Column(db.Text, nullable=False, comment='退款原因')
     status = db.Column(db.String(20), default='申请中', comment='状态：申请中/已同意/已拒绝')

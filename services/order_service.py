@@ -4,7 +4,7 @@ from models.order import Order, OrderItem
 from models.cart import Cart
 from app import db
 
-def create_order(student_id: int, merchant_id: int, address: str, pay_type: str, remark: str = ''):
+def create_order(student_id: int, merchant_id: int, address: str, pay_type: str, remark: str = '', coupon = None):
     """从购物车创建订单"""
     # 查询该学生在该商户的购物车商品
     cart_items = Cart.query.filter_by(student_id=student_id).join(
@@ -16,23 +16,42 @@ def create_order(student_id: int, merchant_id: int, address: str, pay_type: str,
     
     # 计算金额
     total_amount = sum(item.dish.price * item.quantity for item in cart_items)
-    pay_amount = total_amount  # 简化：暂不处理优惠
+    pay_amount = total_amount
+    
+    # 应用优惠券
+    discount_amount = 0
+    if coupon:
+        # 检查是否满足最低消费条件
+        if total_amount >= coupon.min_spend:
+            # 根据优惠券类型计算折扣
+            if coupon.type == '满减' or coupon.type == '无门槛':
+                discount_amount = min(coupon.value, total_amount)  # 确保折扣不超过总价
+                pay_amount = total_amount - discount_amount
+            elif coupon.type == '折扣':
+                discount_amount = total_amount * (1 - coupon.value / 10)  # 假设value是折扣百分比，如8.5表示85折
+                pay_amount = total_amount - discount_amount
+            
+            # 确保支付金额不为负数
+            if pay_amount < 0:
+                pay_amount = 0
     
     # 生成订单号
     order_no = f"ORD{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:8].upper()}"
     
     # 创建订单
     order = Order(
-        order_no=order_no,
-        student_id=student_id,
-        merchant_id=merchant_id,
-        total_amount=total_amount,
-        pay_amount=pay_amount,
-        pay_type=pay_type,
-        status='待接单',
-        address=address,
-        remark=remark
-    )
+            order_no=order_no,
+            student_id=student_id,
+            merchant_id=merchant_id,
+            total_amount=total_amount,
+            pay_amount=pay_amount,
+            pay_type=pay_type,
+            status='待接单',
+            address=address,
+            remark=remark,
+            coupon_id=coupon.id if coupon else None,
+            discount_amount=discount_amount
+        )
     db.session.add(order)
     db.session.flush()  # 获取order.id
     

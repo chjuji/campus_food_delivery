@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* 基础布局样式 */
+        .wrapper {
+            min-height: 100vh;
+            display: flex;
+            width: 100%;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 250px;
+            background: #343a40;
+            color: white;
+            min-height: 100vh;
+            transition: all 0.3s;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #495057;
+        }
+        
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .sidebar-menu li {
+            padding: 0;
+        }
+        
+        .sidebar-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #adb5bd;
+            text-decoration: none;
+            border-bottom: 1px solid #495057;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-menu a:hover {
+            background: #495057;
+            color: white;
+        }
+        
+        .sidebar-menu a.active {
+            background: #0d6efd;
+            color: white;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            width: calc(100% - 250px);
+            margin-left: 250px;
+            transition: all 0.3s;
+        }
+        
+        /* 顶部导航栏 */
+        .main-header {
+            background: white;
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .main-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-name {
+            margin-right: 15px;
+        }
+        
+        /* 内容区域 */
+        .content {
+            padding: 20px;
+            min-height: calc(100vh - 60px);
+            background: #f8f9fa;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar {
+                margin-left: -250px;
+            }
+            
+            .main-content {
+                width: 100%;
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>{% block sidebar_title %}{% endblock %}</h3>
+            </div>
+            
+            <ul class="sidebar-menu">
+                {% block sidebar_menu %}{% endblock %}
+            </ul>
+        </aside>
+        
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <!-- 顶部导航栏 -->
+            <header class="main-header">
+                <h1>{% block page_title %}{% endblock %}</h1>
+                
+                <div class="user-info">
+                    <span class="user-name" id="userName"></span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="logout()">退出</button>
+                </div>
+            </header>
+            
+            <!-- 内容区域 -->
+            <div class="content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 通用用户身份验证和信息管理
+        const UserAuthManager = {
+            // 初始化用户身份验证
+            init: function() {
+                this.validateUser();
+            },
+            
+            // 验证用户登录状态
+            validateUser: function() {
+                const currentPath = window.location.pathname;
+                
+                // 根据路径判断用户类型
+                if (currentPath.includes('/merchant/')) {
+                    this.validateMerchant();
+                } else if (currentPath.includes('/student/')) {
+                    this.validateStudent();
+                } else if (currentPath.includes('/admin/')) {
+                    this.validateAdmin();
+                }
+            },
+            
+            // 验证商户用户
+            validateMerchant: function() {
+                const token = localStorage.getItem('merchant_token');
+                const merchantInfo = JSON.parse(localStorage.getItem('merchantInfo'));
+                
+                // 如果没有登录或信息不完整，跳转到登录页
+                if (!token || !merchantInfo) {
+                    if (!window.location.pathname.includes('/login')) {
+                        window.location.href = '/merchant/login';
+                    }
+                    return false;
+                }
+                
+                // 更新用户信息显示
+                if ($('#userName').length) {
+                    $('#userName').text(merchantInfo.name || '商户用户');
+                }
+                return true;
+            },
+            
+            // 验证学生用户
+            validateStudent: function() {
+                const token = localStorage.getItem('student_token');
+                const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+                
+                // 如果没有登录或信息不完整，跳转到登录页
+                if (!token || !userInfo) {
+                    if (!window.location.pathname.includes('/login')) {
+                        window.location.href = '/student/login';
+                    }
+                    return false;
+                }
+                
+                // 更新用户信息显示
+                if ($('#userName').length) {
+                    $('#userName').text(userInfo.name || '学生用户');
+                }
+                return true;
+            },
+            
+            // 验证管理员用户
+            validateAdmin: function() {
+                const token = localStorage.getItem('admin_token');
+                const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+                
+                // 如果没有登录或信息不完整，跳转到登录页
+                if (!token || !adminInfo) {
+                    if (!window.location.pathname.includes('/login')) {
+                        window.location.href = '/admin/login';
+                    }
+                    return false;
+                }
+                
+                // 更新用户信息显示
+                if ($('#userName').length) {
+                    $('#userName').text(adminInfo.name || '管理员');
+                }
+                return true;
+            },
+            
+            // 获取当前用户类型
+            getUserType: function() {
+                if (localStorage.getItem('merchant_token')) return 'merchant';
+                if (localStorage.getItem('student_token')) return 'student';
+                if (localStorage.getItem('admin_token')) return 'admin';
+                return null;
+            },
+            
+            // 获取当前用户信息
+            getUserInfo: function() {
+                const type = this.getUserType();
+                if (type === 'merchant') return JSON.parse(localStorage.getItem('merchantInfo'));
+                if (type === 'student') return JSON.parse(localStorage.getItem('userInfo'));
+                if (type === 'admin') return JSON.parse(localStorage.getItem('adminInfo'));
+                return null;
+            },
+            
+            // 获取当前用户令牌
+            getToken: function() {
+                const type = this.getUserType();
+                if (type === 'merchant') return localStorage.getItem('merchant_token');
+                if (type === 'student') return localStorage.getItem('student_token');
+                if (type === 'admin') return localStorage.getItem('admin_token');
+                return null;
+            }
+        };
+        
+        // 通用退出登录函数
+        function logout() {
+            const userType = UserAuthManager.getUserType();
+            
+            // 清除对应类型的用户信息
+            if (userType === 'merchant') {
+                localStorage.removeItem('merchant_token');
+                localStorage.removeItem('merchantInfo');
+                window.location.href = '/merchant/login';
+            } else if (userType === 'student') {
+                localStorage.removeItem('student_token');
+                localStorage.removeItem('userInfo');
+                window.location.href = '/student/login';
+            } else if (userType === 'admin') {
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('adminInfo');
+                window.location.href = '/admin/login';
+            } else {
+                // 清除所有可能的用户信息
+                localStorage.removeItem('merchant_token');
+                localStorage.removeItem('merchantInfo');
+                localStorage.removeItem('student_token');
+                localStorage.removeItem('userInfo');
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('adminInfo');
+                window.location.href = '/';
+            }
+        }
+        
+        // 页面加载完成后初始化用户身份验证
+        $(document).ready(function() {
+            UserAuthManager.init();
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

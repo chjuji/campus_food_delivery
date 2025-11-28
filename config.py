@@ -13,6 +13,9 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(basedir, 'campus_food.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Flask配置
+    SECRET_KEY = os.getenv('SECRET_KEY','dev-secret-key-please-change-in-production')
+    
     # JWT配置
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY','dev-secret-key-change-in-production')
     JWT_ACCESS_TOKEN_EXPIRES = 3600 * 2  # 2小时

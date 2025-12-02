@@ -13,6 +13,102 @@
 {% endblock %}
 
 {% block content %}
+<style>
+    /* 购物车按钮和弹框样式 */
+    /* 移除可能冲突的样式定义 */
+    #cartButton {
+        transition: all 0.3s ease;
+    }
+
+    #cartButton:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 确保hidden类有正确的样式 */
+    .hidden {
+        display: none !important;
+    }
+
+    #cartDropdown {
+        transition: all 0.3s ease;
+        transform-origin: bottom right;
+        animation: cartSlideIn 0.3s ease-out;
+    }
+
+    @keyframes cartSlideIn {
+        from {
+            opacity: 0;
+            transform: scale(0.8) translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .cart-item {
+        transition: all 0.2s ease;
+    }
+
+    .cart-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .decrease-btn,
+    .increase-btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .decrease-btn:hover,
+    .increase-btn:hover {
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    /* 确保购物车弹框在移动端也能正常显示 */
+    @media (max-width: 768px) {
+        #cartDropdown {
+            width: 90vw;
+            max-width: 320px;
+        }
+
+        .cart-item {
+            padding: 12px;
+        }
+
+        .cart-item img {
+            width: 48px;
+            height: 48px;
+        }
+    }
+    <!-- 配合少量 CSS 控制切换（可写在全局样式中）-->
+    /* 展开状态：显示向下箭头，隐藏向上箭头 */
+    .btn[aria-expanded="true"] .expand-icon {
+        display: inline;
+    }
+
+    .btn[aria-expanded="true"] .collapse-icon {
+        display: none;
+    }
+
+    /* 收起状态：显示向上箭头，隐藏向下箭头 */
+    .btn[aria-expanded="false"] .expand-icon {
+        display: none;
+    }
+
+    .btn[aria-expanded="false"] .collapse-icon {
+        display: inline;
+    }
+</style>
+<!-- 引入 Bootstrap Icons 字体库, 用于上下箭头图标显示 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
@@ -40,6 +136,12 @@
                             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#categoryCollapse" aria-expanded="true"
                                 aria-controls="categoryCollapse">
+                                <!-- <span class="collapse-icon collapse-btn-icon">▼</span>
+                                <span class="expand-icon collapse-btn-icon">▲</span> -->
+                                <!-- 展开（向下）图标 -->
+                                <i class="bi bi-chevron-down collapse-icon"></i>
+                                <!-- 收起（向上）图标 -->
+                                <i class="bi bi-chevron-up expand-icon"></i>
                             </button>
                         </h5>
                     </div>
@@ -63,9 +165,116 @@
         </div>
     </div>
 </div>
+
+<!-- 购物车弹框按钮和弹框 -->
+<div id="cartButtonContainer"
+    style="position: fixed; bottom: 40px; right: 40px; z-index: 9999; display: block !important; cursor: move; user-select: none; background-color: rgba(255, 255, 255, 0.7); border-radius: 45px; padding: 5px;">
+    <script>
+        // 购物车按钮拖拽功能实现
+        document.addEventListener('DOMContentLoaded', function () {
+            const cartButtonContainer = document.getElementById('cartButtonContainer');
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            // 鼠标按下事件，开始拖拽
+            cartButtonContainer.addEventListener('mousedown', function (e) {
+                // 只有点击购物车按钮容器本身才触发拖拽，避免点击按钮时触发
+                if (e.target === cartButtonContainer) {
+                    isDragging = true;
+                    const rect = cartButtonContainer.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+
+                    // 添加拖拽中样式
+                    cartButtonContainer.style.opacity = '0.8';
+                    cartButtonContainer.style.transition = 'none';
+                }
+            });
+
+            // 鼠标移动事件，更新位置
+            document.addEventListener('mousemove', function (e) {
+                if (isDragging) {
+                    // 计算新位置，确保不超出浏览器视口
+                    let newX = e.clientX - offsetX;
+                    let newY = e.clientY - offsetY;
+
+                    // 限制在视口范围内
+                    const containerWidth = cartButtonContainer.offsetWidth;
+                    const containerHeight = cartButtonContainer.offsetHeight;
+
+                    newX = Math.max(0, Math.min(window.innerWidth - containerWidth, newX));
+                    newY = Math.max(0, Math.min(window.innerHeight - containerHeight, newY));
+
+                    // 更新位置
+                    cartButtonContainer.style.left = newX + 'px';
+                    cartButtonContainer.style.top = newY + 'px';
+                    cartButtonContainer.style.bottom = 'auto';
+                    cartButtonContainer.style.right = 'auto';
+                }
+            });
+
+            // 鼠标松开事件，结束拖拽
+            document.addEventListener('mouseup', function () {
+                if (isDragging) {
+                    isDragging = false;
+                    // 恢复正常样式
+                    cartButtonContainer.style.opacity = '1';
+                    cartButtonContainer.style.transition = 'all 0.3s ease';
+                }
+            });
+        });
+    </script>
+    <button id="cartButton"
+        style="width: 70px; height: 70px; border-radius: 50%; background-color: #ff6b6b; color: white; border: 3px solid #ff8787; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 5px 20px rgba(255, 107, 107, 0.5); cursor: pointer; z-index: 9999; transition: all 0.3s ease;"
+        onclick="event.stopPropagation(); $('#cartDropdown').toggleClass('hidden'); updateCartItems();">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+            <path
+                d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l1.313 7h8.17l1.313-7H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z">
+            </path>
+        </svg>
+        <span id="cartCount"
+            style="position: absolute; top: -10px; right: -10px; background-color: #ff3333; color: white; font-size: 14px; font-weight: bold; min-width: 26px; height: 26px; border-radius: 13px; display: flex; align-items: center; justify-content: center; padding: 0 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);">0</span>
+    </button>
+    <div id="cartDropdown"
+        class="hidden absolute bottom-full right-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+        <div class="p-3 border-b">
+            <h5 class="mb-0">购物车</h5>
+        </div>
+        <div id="cartItems" class="p-3">
+            <div id="emptyCart" class="text-center text-muted py-3">购物车是空的</div>
+            <div id="cartItemsList" class="hidden">
+                <!-- 这里会动态生成购物车菜品列表 -->
+                <!-- 示例菜品项模板 -->
+                <!-- 
+                <div class="cart-item mb-3 p-2 border rounded" data-id="1">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="font-medium">菜品名称</div>
+                            <div class="text-danger">¥20.00</div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm btn-outline-secondary decrease-btn">-</button>
+                            <span class="mx-2">1</span>
+                            <button class="btn btn-sm btn-outline-secondary increase-btn">+</button>
+                        </div>
+                    </div>
+                </div>
+                -->
+            </div>
+        </div>
+        <div class="p-3 border-t">
+            <div class="d-flex justify-content-between mb-3">
+                <span class="font-bold">合计：</span>
+                <span id="totalPrice" class="text-danger font-bold">¥0.00</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button id="checkoutButton" class="btn btn-danger flex-grow-1">去结算</button>
+                <button id="clearCartButton" class="btn btn-outline-secondary">清空</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
-
-
 
 {% block scripts %}
 <script>
@@ -91,6 +300,9 @@
 
         // 默认显示所有菜品（全部分类）
         showDefaultContent();
+
+        // 页面加载完成后初始化菜品数量显示
+        setTimeout(initDishQuantities, 500);
 
         // 设置当前菜单激活状态
         const currentPath = window.location.pathname;
@@ -196,7 +408,14 @@
                                         <span class="badge bg-secondary">${dish.category}</span>
                                         <span class="text-muted ms-2">${dish.merchant_name}</span>
                                     </div>
-                                    <button class="btn btn-primary btn-sm mt-2" onclick="viewMerchantDetails(${dish.merchant_id})">查看菜品</button>
+                                    <div class="mt-2 d-flex justify-content-between align-items-center">
+                                        <button class="btn btn-primary btn-sm" onclick="viewMerchantDetails(${dish.merchant_id})">查看商家</button>
+                                        <div class="quantity-control" id="quantity-control-${dish.id}">
+                                            <button class="btn btn-sm btn-outline-secondary decrease-btn" onclick="updateDishQuantity(${dish.id}, -1)" style="float: left;">-</button>
+                                            <span class="quantity-value mx-2" style="display: inline-block; min-width: 30px; text-align: center;">0</span>
+                                            <button class="btn btn-sm btn-outline-secondary increase-btn" onclick="updateDishQuantity(${dish.id}, 1)" style="float: right;">+</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -255,6 +474,8 @@
                         );
 
                         renderDishList(filteredDishes);
+                        // 初始化菜品数量显示
+                        setTimeout(initDishQuantities, 100);
                     }
                 }
             });
@@ -290,6 +511,8 @@
                 success: function (res) {
                     if (res.code === 200) {
                         renderDishList(res.data);
+                        // 初始化菜品数量显示
+                        setTimeout(initDishQuantities, 100);
                     }
                 }
             });
@@ -300,6 +523,8 @@
                 success: function (res) {
                     if (res.code === 200) {
                         renderDishList(res.data);
+                        // 初始化菜品数量显示
+                        setTimeout(initDishQuantities, 100);
                     }
                 }
             });
@@ -445,9 +670,11 @@
                                     <p class="card-text text-muted small mb-3">${dish.description || '暂无描述'}</p>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="text-danger font-bold">¥${dish.price}</span>
-                                        <button class="btn btn-primary" onclick="addToCart(${dish.id})">
-                                            <i class="bi bi-cart-plus"></i>
-                                        </button>
+                                        <div class="quantity-control" id="quantity-control-${dish.id}" style="display: flex; align-items: center;">
+                                        <button class="btn btn-sm btn-outline-secondary decrease-btn" onclick="updateDishQuantity(${dish.id}, -1)" style="float: left;">-</button>
+                                        <span class="quantity-value mx-2" style="display: inline-block; min-width: 30px; text-align: center;">0</span>
+                                        <button class="btn btn-sm btn-outline-secondary increase-btn" onclick="updateDishQuantity(${dish.id}, 1)" style="float: right;">+</button>
+                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -464,6 +691,9 @@
 
         // 组合HTML并更新页面内容区域
         $('#merchantList').html(merchantInfoHtml + dishesHtml);
+
+        // 初始化菜品数量显示
+        initDishQuantities();
     }
 
     // 分类筛选
@@ -492,5 +722,624 @@
         localStorage.removeItem('studentInfo');
         window.location.href = '/student/login';
     }
+
+    // 购物车功能相关代码
+    // 页面加载完成后执行
+    window.addEventListener('DOMContentLoaded', function () {
+        // 初始化购物车数据
+        updateCartDisplay();
+
+        // 使用原生JavaScript控制购物车弹框的显示和隐藏
+        const cartButton = document.getElementById('cartButton');
+        const cartDropdown = document.getElementById('cartDropdown');
+        const cartButtonContainer = document.getElementById('cartButtonContainer');
+        const checkoutButton = document.getElementById('checkoutButton');
+
+        // 确保元素存在
+        if (!cartButton || !cartDropdown || !cartButtonContainer) {
+            // console.error('购物车相关元素未找到');
+            return;
+        }
+
+        // 使用内部状态变量跟踪弹框显示状态，避免依赖DOM
+        let isCartOpen = false;
+
+        // 明确设置初始状态：隐藏购物车弹框
+        // console.log('购物车元素已找到，初始状态检查：');
+        // console.log('cartDropdown初始类名:', cartDropdown.className);
+        // console.log('cartDropdown是否包含hidden类:', cartDropdown.classList.contains('hidden'));
+
+        // 强制添加hidden类，确保初始状态隐藏
+        cartDropdown.classList.add('hidden');
+        // console.log('强制添加hidden类后，是否包含hidden类:', cartDropdown.classList.contains('hidden'));
+        // console.log('强制添加hidden类后，类名:', cartDropdown.className);
+
+        // 点击购物车按钮显示/隐藏弹框
+        cartButton.addEventListener('click', function (e) {
+            // console.log('购物车按钮被点击，内部状态:', isCartOpen);
+            e.stopPropagation();
+
+            if (isCartOpen) {
+                // 隐藏弹框
+                // console.log('隐藏购物车弹框：添加hidden类');
+                cartDropdown.classList.add('hidden');
+                isCartOpen = false;
+            } else {
+                // 显示弹框
+                // console.log('显示购物车弹框：移除hidden类');
+                cartDropdown.classList.remove('hidden');
+                // 展开时更新购物车内容
+                updateCartItems();
+                isCartOpen = true;
+            }
+            // console.log('操作后类名:', cartDropdown.className);
+            // console.log('操作后内部状态:', isCartOpen);
+        });
+
+        // 去结算按钮点击事件
+        if (checkoutButton) {
+            checkoutButton.addEventListener('click', function () {
+                window.location.href = '/student/cart';
+            });
+        }
+
+        // 清空购物车按钮点击事件
+        const clearCartButton = document.getElementById('clearCartButton');
+        if (clearCartButton) {
+            clearCartButton.addEventListener('click', function () {
+                if (confirm('确定要清空购物车吗？')) {
+                    // 发送清空购物车的请求
+                    $.ajax({
+                        url: '/api/student/cart/clear',
+                        type: 'DELETE',
+                        success: function (res) {
+                            if (res && res.code === 200) {
+                                // 更新购物车显示
+                                updateCartDisplay();
+                                updateCartItems();
+                                // 初始化所有菜品数量为0
+                                initDishQuantities();
+                                alert('购物车已清空');
+                            } else {
+                                alert('清空购物车失败：' + (res ? res.msg : '未知错误'));
+                            }
+                        },
+                        error: function () {
+                            alert('网络错误，无法清空购物车');
+                        }
+                    });
+                }
+            });
+        }
+
+        // 动态绑定菜品数量增减按钮事件（使用事件委托）
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('decrease-btn')) {
+                // 获取菜品ID
+                const dishId = e.target.dataset.dishId;
+                if (dishId) {
+                    updateCartItemQuantity(dishId, -1);
+                }
+            } else if (e.target.classList.contains('increase-btn')) {
+                // 获取菜品ID
+                const dishId = e.target.dataset.dishId;
+                if (dishId) {
+                    updateCartItemQuantity(dishId, 1);
+                }
+            }
+        });
+    });
+
+    // 更新购物车显示（角标数字等）
+    function updateCartDisplay() {
+        $.ajax({
+            url: '/api/student/cart',
+            // 使用session验证，不再需要Authorization头
+            success: function (res) {
+                if (res.code === 200 && res.data) {
+                    // 正确获取购物车数据，支持新的数据结构
+                    const cartItems = (res.data && res.data.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+                    let totalCount = 0;
+
+                    // 计算总数量
+                    cartItems.forEach(item => {
+                        totalCount += item.quantity || 0;
+                    });
+
+                    // 更新角标数字
+                    const cartCount = document.getElementById('cartCount');
+                    cartCount.textContent = totalCount;
+
+                    // 如果购物车为空，隐藏角标；否则显示
+                    if (totalCount === 0) {
+                        cartCount.style.display = 'none';
+                    } else {
+                        cartCount.style.display = 'flex';
+                    }
+                }
+            }
+        });
+    }
+
+    // 更新购物车菜品列表
+    function updateCartItems() {
+        $.ajax({
+            url: '/api/student/cart',
+            // 使用session验证，不再需要Authorization头
+            success: function (res) {
+                if (res.code === 200 && res.data) {
+                    // 正确获取购物车数据，支持新的数据结构
+                    const cartItems = (res.data && res.data.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+                    const cartItemsList = $('#cartItemsList');
+                    const emptyCart = $('#emptyCart');
+
+                    if (cartItems.length === 0) {
+                        // 购物车为空
+                        cartItemsList.addClass('hidden');
+                        emptyCart.removeClass('hidden');
+                        $('#totalPrice').text('¥0.00');
+                    } else {
+                        // 购物车有商品
+                        cartItemsList.empty().removeClass('hidden');
+                        emptyCart.addClass('hidden');
+
+                        let totalPrice = 0;
+
+                        // 渲染购物车菜品
+                        cartItems.forEach(item => {
+                                const quantity = item.quantity || 1;
+                                const dish = item.dish || {};
+                                const itemTotal = (dish.price || 0) * quantity;
+                                totalPrice += itemTotal;
+
+                                const cartItemHtml = `
+                                <div class="cart-item mb-3 p-2 border rounded" data-id="${item.id}" data-dish-id="${dish.id}">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-grow-1">
+                                            <div class="font-medium">${dish.dish_name}</div>
+                                            <div class="text-danger">¥${(dish.price || 0).toFixed(2)}</div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <button class="btn btn-sm btn-outline-secondary decrease-btn" data-dish-id="${dish.id}">-</button>
+                                            <span class="mx-2 quantity">${quantity}</span>
+                                            <button class="btn btn-sm btn-outline-secondary increase-btn" data-dish-id="${dish.id}">+</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                                cartItemsList.append(cartItemHtml);
+                            });
+
+                            // 更新合计价格
+                            $('#totalPrice').text(`¥${totalPrice.toFixed(2)}`);
+                        }
+                    // 更新菜品数量显示，确保购物车和菜品栏数量同步
+                    initDishQuantities();
+                    }
+                }
+            });
+    }
+
+    // 更新购物车菜品数量
+    function updateCartItemQuantity(dishId, change) {
+        // 获取当前数量 - 使用data-dish-id查找购物车项
+        const cartItem = $(`.cart-item[data-dish-id="${dishId}"]`);
+        const quantityElement = cartItem.find('.quantity');
+        let currentQuantity = parseInt(quantityElement.text()) || 1;
+
+        // 计算新数量
+        let newQuantity = currentQuantity + change;
+
+        // 确保数量不小于1
+        // if (newQuantity < 1) {
+        //     // 可以选择删除商品或保持为1
+        //     if (confirm('确定要从购物车中移除该商品吗？')) {
+        //         // 从购物车中移除商品
+        //         removeFromCart(dishId);
+        //         return;
+        //     } else {
+        //         return; // 取消操作
+        //     }
+        // }
+
+        // 更新购物车 - 使用学生路由中的购物车更新接口
+        $.ajax({
+            url: '/api/student/cart/' + dishId,
+            method: 'PUT',
+            // 使用session验证，不再需要Authorization头
+            contentType: 'application/json',
+            data: JSON.stringify({
+                quantity: newQuantity
+            }),
+            success: function (res) {
+                if (res.code === 200) {
+                    // 更新本地显示
+                    quantityElement.text(newQuantity);
+                    updateTotalPrice();
+                    updateCartDisplay();
+                    updateCartItems(); // 同时更新购物车列表显示
+
+                    // 更新菜品栏中对应菜品的数量显示
+                    // 找到对应的菜品数量控件并更新
+                    const quantityControl = $(`#quantity-control-${dishId}`);
+                    if (quantityControl.length > 0) {
+                        const quantityValue = quantityControl.find('.quantity-value');
+                        quantityValue.text(newQuantity);
+                    }
+
+                    // 兼容其他可能的数量显示元素
+                    $(`.dish-quantity[data-id="${dishId}"]`).each(function () {
+                        $(this).text(newQuantity);
+                        // 如果数量大于0，显示数字，否则可能需要处理减号按钮的禁用状态
+                        if (newQuantity > 0) {
+                            $(this).show();
+                            $(this).siblings('.decrease-btn').removeClass('disabled');
+                        } else {
+                            $(this).hide();
+                            $(this).siblings('.decrease-btn').addClass('disabled');
+                        }
+                    });
+
+                    // 同时更新菜品卡片上的+按钮旁边的数量显示（如果有）
+                    $(`.dish-card[data-id="${dishId}"] .quantity-display`).each(function () {
+                        if (newQuantity > 0) {
+                            $(this).text(newQuantity).show();
+                            $(this).siblings('.decrease-btn').removeClass('disabled');
+                        } else {
+                            $(this).hide();
+                            $(this).siblings('.decrease-btn').addClass('disabled');
+                        }
+                    });
+                } else {
+                    alert('更新失败：' + (res.msg || '未知错误'));
+                }
+            },
+            error: function () {
+                alert('网络错误，无法更新商品数量');
+            }
+        });
+    }
+
+    // 从购物车移除商品 - 使用学生路由中的购物车删除接口
+    function removeFromCart(dishId) {
+        $.ajax({
+            url: '/api/student/cart/' + dishId,
+            method: 'DELETE',
+            // 使用session验证，不再需要Authorization头
+            success: function (res) {
+                if (res.code === 200) {
+                    // 移除DOM元素 - 使用data-dish-id查找购物车项
+                    $(`.cart-item[data-dish-id="${dishId}"]`).remove();
+                    // 更新购物车显示
+                    updateTotalPrice();
+                    updateCartDisplay();
+                    updateCartItems(); // 重新加载购物车列表，确保空状态正确显示
+
+                    // 更新菜品栏中对应菜品的数量显示为0
+                    const quantityControl = $(`#quantity-control-${dishId}`);
+                    if (quantityControl.length > 0) {
+                        const quantityValue = quantityControl.find('.quantity-value');
+                        quantityValue.text('0');
+                    }
+
+                    // 兼容其他可能的数量显示元素
+                    $(`.dish-quantity[data-id="${dishId}"]`).each(function () {
+                        $(this).text('0');
+                        $(this).hide();
+                        $(this).siblings('.decrease-btn').addClass('disabled');
+                    });
+
+                    // 同时更新菜品卡片上的+按钮旁边的数量显示
+                    $(`.dish-card[data-id="${dishId}"] .quantity-display`).each(function () {
+                        $(this).text('0');
+                        $(this).hide();
+                        $(this).siblings('.decrease-btn').addClass('disabled');
+                    });
+                } else {
+                    alert('移除失败：' + (res.msg || '未知错误'));
+                }
+            },
+            error: function () {
+                alert('网络错误，无法移除商品');
+            }
+        });
+    }
+
+    // 检查购物车是否为空
+    if ($('.cart-item').length === 0) {
+        $('#cartItemsList').addClass('hidden');
+        $('#emptyCart').removeClass('hidden');
+        $('#totalPrice').text('¥0.00');
+    }
+
+    // 更新合计价格
+    function updateTotalPrice() {
+        let totalPrice = 0;
+
+        $('.cart-item').each(function () {
+            const quantity = parseInt($(this).find('.quantity').text()) || 1;
+            const priceText = $(this).find('.text-danger').text();
+            const price = parseFloat(priceText.replace('¥', '')) || 0;
+
+            totalPrice += price * quantity;
+        });
+
+        $('#totalPrice').text(`¥${totalPrice.toFixed(2)}`);
+    }
+
+    // 初始化菜品数量显示
+    function initDishQuantities() {
+        // 获取购物车数据
+        $.ajax({
+            url: '/api/student/cart',
+            // 使用session验证，不再需要Authorization头
+
+            success: function (res) {
+                if (res.code === 200 && res.data) {
+                    // 创建购物车中菜品数量的映射
+                    const cartItemsMap = {};
+                    // 使用正确的数据结构路径
+                    if (res.data && res.data.items && Array.isArray(res.data.items)) {
+                        res.data.items.forEach(item => {
+                            if (item.dish) {
+                                cartItemsMap[item.dish.id] = item.quantity || 0;
+                            } else if (item.id) {
+                                // 兼容不同的数据结构
+                                cartItemsMap[item.id] = item.quantity || 0;
+                            }
+                        });
+                    } else if (Array.isArray(res.data)) {
+                        // 兼容旧的数据结构
+                        res.data.forEach(item => {
+                            if (item.dish) {
+                                cartItemsMap[item.dish.id] = item.quantity || 0;
+                            } else if (item.id) {
+                                cartItemsMap[item.id] = item.quantity || 0;
+                            }
+                        });
+                    }
+
+                    // 更新页面上所有菜品的数量显示
+                    $('.quantity-control').each(function () {
+                        const dishId = $(this).attr('id').split('-')[2];
+                        const quantity = cartItemsMap[dishId] || 0;
+                        $(this).find('.quantity-value').text(quantity);
+                    });
+                }
+            },
+            error: function () {
+                console.log('获取购物车数据失败，显示默认数量');
+                // 显示默认数量0
+                $('.quantity-value').text('0');
+            }
+        });
+    }
+
+    // 更新菜品数量（处理加减按钮点击）
+    function updateDishQuantity(dishId, change) {
+        // 获取当前数量
+        const quantityElement = $(`#quantity-control-${dishId} .quantity-value`);
+        let currentQuantity = parseInt(quantityElement.text()) || 0;
+
+        // 计算新数量
+        let newQuantity = currentQuantity + change;
+
+        // 确保数量不小于0
+        if (newQuantity < 0) {
+            newQuantity = 0;
+        }
+
+        // 更新显示（立即更新UI，提升用户体验）
+        quantityElement.text(newQuantity);
+
+        // 如果要设置为0，先检查是否需要从购物车移除
+        if (newQuantity === 0 && currentQuantity > 0) {
+            // 首先获取购物车项列表，查找对应菜品的cart_id
+            $.ajax({
+                url: '/api/student/cart',
+                method: 'GET',
+                // 使用session验证，不再需要Authorization头
+                success: function (cartRes) {
+                    if (cartRes.code === 200 && cartRes.data && cartRes.data.items) {
+                        // 查找对应菜品的购物车项
+                        const cartItem = cartRes.data.items.find(item => item.dish && item.dish.id === parseInt(dishId));
+                        if (cartItem) {
+                            // 调用删除购物车项接口
+                            $.ajax({
+                                url: '/api/student/cart/' + dishId,
+                                method: 'DELETE',
+                                // 使用session验证，不再需要Authorization头
+
+                                success: function (res) {
+                                    if (res.code === 200) {
+                                        // 更新购物车显示
+                                        updateCartDisplay();
+                                        if (typeof updateCartItems === 'function') {
+                                            updateCartItems();
+                                        }
+
+                                        // 更新页面上所有相同菜品的数量显示为0
+                                        $(`.quantity-control[id^="quantity-control-${dishId}"] .quantity-value`).each(function () {
+                                            $(this).text('0');
+                                        });
+                                    } else {
+                                        // 恢复原数量
+                                        quantityElement.text(currentQuantity);
+                                        alert('移除失败：' + (res.msg || '未知错误'));
+                                    }
+                                },
+                                error: function (xhr) {
+                                    // 恢复原数量
+                                    quantityElement.text(currentQuantity);
+                                    // 尝试获取更详细的错误信息
+                                    let errorMsg = '网络错误，移除失败';
+                                    try {
+                                        const errorData = JSON.parse(xhr.responseText);
+                                        if (errorData && errorData.msg) {
+                                            errorMsg = errorData.msg;
+                                        }
+                                    } catch (e) {
+                                        // 忽略解析错误
+                                    }
+                                    alert(errorMsg);
+                                }
+                            });
+                        } else {
+                            // 购物车中没有该商品，不需要删除
+                            updateCartDisplay();
+                            if (typeof updateCartItems === 'function') {
+                                updateCartItems();
+                            }
+                        }
+                    } else {
+                        // 获取购物车失败
+                        quantityElement.text(currentQuantity);
+                        alert('获取购物车信息失败');
+                    }
+                },
+                error: function () {
+                    // 获取购物车失败
+                    quantityElement.text(currentQuantity);
+                    alert('网络错误，无法获取购物车信息');
+                }
+            });
+        } else if (newQuantity > 0) {
+            // 根据change的正负判断是增加还是减少数量
+            if (change > 0) {
+                // 对于增加数量，直接调用添加购物车接口
+                $.ajax({
+                    url: '/api/student/cart/add',
+                    method: 'POST',
+                    // 使用session验证，不再需要Authorization头
+
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        dish_id: parseInt(dishId), // 确保是整数类型
+                        quantity: 1 // 每次点击+按钮增加1个
+                    }),
+                    success: function (res) {
+                        if (res.code === 200) {
+                            // 更新购物车显示
+                            updateCartDisplay();
+                            if (typeof updateCartItems === 'function') {
+                                updateCartItems();
+                            }
+
+                            // 获取最新的数量
+                            let updatedQuantity = newQuantity;
+                            if (res.data && res.data.quantity !== undefined) {
+                                updatedQuantity = res.data.quantity;
+                            }
+
+                            // 更新页面上所有相同菜品的数量显示
+                            $(`.quantity-control[id^="quantity-control-${dishId}"] .quantity-value`).each(function () {
+                                $(this).text(updatedQuantity);
+                            });
+                        } else {
+                            // 恢复原数量
+                            quantityElement.text(currentQuantity);
+                            alert('添加失败：' + (res.msg || '未知错误'));
+                        }
+                    },
+                    error: function (xhr) {
+                        // 恢复原数量
+                        quantityElement.text(currentQuantity);
+                        // 尝试获取更详细的错误信息
+                        let errorMsg = '网络错误，添加失败';
+                        try {
+                            const errorData = JSON.parse(xhr.responseText);
+                            if (errorData && errorData.msg) {
+                                errorMsg = errorData.msg;
+                            }
+                        } catch (e) {
+                            // 忽略解析错误
+                        }
+                        alert(errorMsg);
+                    }
+                });
+            } else {
+                // 对于减少数量，需要找到对应的cart_id
+                // 首先获取购物车项列表，查找对应菜品的cart_id
+                $.ajax({
+                    url: '/api/student/cart',
+                    method: 'GET',
+                    // 使用session验证，不再需要Authorization头
+
+                    success: function (cartRes) {
+                        if (cartRes.code === 200 && cartRes.data && cartRes.data.items) {
+                            // 查找对应菜品的购物车项
+                            const cartItem = cartRes.data.items.find(item => item.dish && item.dish.id === parseInt(dishId));
+                            if (cartItem) {
+                                // 调用更新购物车项接口
+                                $.ajax({
+                                    url: '/api/student/cart/' + dishId,
+                                    method: 'PUT',
+                                    // 使用session验证，不再需要Authorization头
+
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({
+                                        quantity: newQuantity
+                                    }),
+                                    success: function (updateRes) {
+                                        if (updateRes.code === 200) {
+                                            // 更新购物车显示
+                                            updateCartDisplay();
+                                            if (typeof updateCartItems === 'function') {
+                                                updateCartItems();
+                                            }
+
+                                            // 更新页面上所有相同菜品的数量显示
+                                            $(`.quantity-control[id^="quantity-control-${dishId}"] .quantity-value`).each(function () {
+                                                $(this).text(newQuantity);
+                                            });
+                                        } else {
+                                            // 恢复原数量
+                                            quantityElement.text(currentQuantity);
+                                            alert('减少失败：' + (updateRes.msg || '未知错误'));
+                                        }
+                                    },
+                                    error: function (xhr) {
+                                        // 恢复原数量
+                                        quantityElement.text(currentQuantity);
+                                        // 尝试获取更详细的错误信息
+                                        let errorMsg = '网络错误，减少失败';
+                                        try {
+                                            const errorData = JSON.parse(xhr.responseText);
+                                            if (errorData && errorData.msg) {
+                                                errorMsg = errorData.msg;
+                                            }
+                                        } catch (e) {
+                                            // 忽略解析错误
+                                        }
+                                        alert(errorMsg);
+                                    }
+                                });
+                            } else {
+                                // 没有找到对应的购物车项，恢复原数量
+                                quantityElement.text(currentQuantity);
+                                alert('未找到对应的购物车项');
+                            }
+                        } else {
+                            // 获取购物车失败，恢复原数量
+                            quantityElement.text(currentQuantity);
+                            alert('获取购物车失败：' + (cartRes.msg || '未知错误'));
+                        }
+                    },
+                    error: function (xhr) {
+                        // 恢复原数量
+                        quantityElement.text(currentQuantity);
+                        alert('获取购物车失败，无法减少数量');
+                    }
+                });
+            }
+        }
+    }
+
+    // 定义addToCart函数，添加商品到购物车（保留以便兼容）
+    function addToCart(dishId) {
+        updateDishQuantity(dishId, 1);
+    }
+
 </script>
 {% endblock %}

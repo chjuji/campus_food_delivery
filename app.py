@@ -4,6 +4,7 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import Config
 import os
+# from sqlalchemy import inspect # 用于修改数据库
 
 # # 初始化数据库
 # db = SQLAlchemy()
@@ -214,7 +215,7 @@ def create_app():
         model_modules = [
             'models.student', 'models.merchant', 'models.order', 'models.dish',
             'models.cart', 'models.comment', 'models.complaint', 'models.coupon',
-            'models.platform_config'
+            'models.platform_config', 'models.address'
         ]
         for m in model_modules:
             try:
@@ -266,6 +267,32 @@ def create_app():
             except Exception as e:
                 print('初始化平台配置数据时出错：', e)
                 db.session.rollback()
+            
+            # # 检查学生表是否有新增字段
+            # inspector = inspect(db.engine)
+            # student_columns = [col['name'] for col in inspector.get_columns('student')]
+            
+            # # 如果缺少新增字段，使用ALTER TABLE添加字段，避免数据丢失
+            # new_columns = ['gender', 'wallet']
+            # missing_columns = [col for col in new_columns if col not in student_columns]
+            
+            # if missing_columns:
+            #     print(f'检测到学生表缺少字段: {missing_columns}')
+            #     print('正在更新数据库结构...')
+                
+            #     # 使用SQLAlchemy的DDL语句添加缺失字段
+            #     from sqlalchemy import text
+                
+            #     for column in missing_columns:
+            #         if column == 'gender':
+            #             # 添加VARCHAR(10)类型的gender字段，默认值为'未知'
+            #             db.session.execute(text("ALTER TABLE student ADD COLUMN gender VARCHAR(10) DEFAULT '未知'"))
+            #         elif column == 'wallet':
+            #             # 添加DECIMAL(10,2)类型的wallet字段，默认值为0.00
+            #             db.session.execute(text("ALTER TABLE student ADD COLUMN wallet DECIMAL(10,2) DEFAULT 0.00"))
+                
+            #     db.session.commit()
+            #     print('数据库结构更新完成')
             
             # # 检查商户表是否有新增字段
             # inspector = inspect(db.engine)

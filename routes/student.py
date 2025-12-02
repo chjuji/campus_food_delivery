@@ -4,14 +4,18 @@ from models.student import Student
 from models.cart import Cart
 from models.dish import Dish
 from models.coupon import Coupon, UserCoupon
-from models.complaint import Complaint
 from models.order import Order
+from models.complaint import Complaint
+from models.address import Address
+import re
 from datetime import datetime
 from services.auth_service import student_register, student_login
 from services.order_service import create_order
 from utils.validator import validate_student_register
+from utils.file_utils import save_file, allowed_file
 from extensions import db
 import bcrypt
+import os
 
 # 检查学生是否已登录的装饰器（API路由用）
 def api_login_required(f):
@@ -114,79 +118,460 @@ def get_profile():
             'name': student.name,
             'phone': student.phone,
             'avatar': student.avatar,
-            'register_time': student.create_time.strftime('%Y-%m-%d %H:%M')
+            'register_time': student.create_time.strftime('%Y-%m-%d %H:%M'),
+            'gender': student.gender,
+            'wallet': float(student.wallet) if student.wallet else 0.00
         }
     })
+
+# 更新个人信息 - POST方法
+@student_bp.post('/profile/update')
+@api_login_required
+def update_profile():
+    # 复用PUT方法的实现
+    return update_profile_put()
+
+# 修改密码API端点 - PUT方法（与前端请求兼容）
+@student_bp.put('/change-password')
+@api_login_required
+def change_password_put():
+    # 复用POST方法的逻辑
+    return change_password_impl()
+
+# 修改密码API端点 - POST方法
+@student_bp.post('/change-password')
+@api_login_required
+def change_password():
+    # 复用核心实现逻辑
+    return change_password_impl()
+
+# 修改密码核心实现函数
+@api_login_required
+def change_password_impl():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
+        
+        # 获取密码数据
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        # 验证必填字段
+        if not current_password or not new_password:
+            return jsonify({'code': 400, 'msg': '请输入当前密码和新密码'}), 400
+        
+        # 验证当前密码是否正确
+        if not bcrypt.checkpw(current_password.encode('utf-8'), student.password.encode('utf-8')):
+            return jsonify({'code': 400, 'msg': '当前密码错误'}), 400
+        
+        # 验证新密码长度
+        if len(new_password) < 8:
+            return jsonify({'code': 400, 'msg': '新密码长度不能少于8位'}), 400
+        
+        # 更新密码
+        hashed_pwd = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        student.password = hashed_pwd.decode('utf-8')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '密码修改成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'修改密码错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '修改密码失败：服务器内部错误'}), 500
+
+# 上传头像
+@student_bp.post('/avatar')
+@api_login_required
+def upload_avatar():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        # 检查是否有文件上传
+        if 'avatar' not in request.files:
+            return jsonify({'code': 400, 'msg': '没有选择文件'}), 400
+        
+        file = request.files['avatar']
+        if file.filename == '':
+            return jsonify({'code': 400, 'msg': '没有选择文件'}), 400
+        
+        # 确保上传目录存在
+        from config import Config
+        avatar_folder = Config.UPLOAD_FOLDER.get('avatar')
+        if not os.path.exists(avatar_folder):
+            os.makedirs(avatar_folder)
+
+        # 删除原头像文件
+        original_avatar = student.avatar
+        if original_avatar:
+            original_avatar_path = os.path.join(avatar_folder, original_avatar)
+            if os.path.exists(original_avatar_path):
+                try:
+                    os.remove(original_avatar_path)
+                except Exception as e:
+                    print(f'删除原头像失败: {str(e)}')
+
+        # 保存文件
+        try:
+            file_path = save_file(file, 'avatar')
+            # 更新学生头像路径
+            student.avatar = file_path.split('/')[-1]  # 只保存文件名
+            db.session.commit()
+            return jsonify({'code': 200, 'msg': '头像上传成功'})
+        except ValueError as e:
+            return jsonify({'code': 400, 'msg': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        print(f'头像上传错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '头像上传失败：服务器内部错误'}), 500
+
+# 更新个人信息 - PUT方法（支持前端使用PUT请求）
+@student_bp.put('/profile')
+@api_login_required
+def update_profile_put():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
+        
+        # 更新用户信息
+        if 'name' in data:
+            student.name = data['name'].strip()
+        if 'phone' in data:
+            student.phone = data['phone'].strip()
+        if 'gender' in data:
+            student.gender = data['gender']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '个人信息更新成功',
+            'data': {
+                'student_id': student.student_id,
+                'name': student.name,
+                'phone': student.phone,
+                'gender': student.gender
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'更新个人信息错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '更新个人信息失败：服务器内部错误'}), 500
+
+# 获取地址列表
+@student_bp.get('/addresses')
+@api_login_required
+def get_addresses():
+    try:
+        user_id = session['student_id']
+        addresses = Address.query.filter_by(student_id=user_id).order_by(Address.is_default.desc(), Address.create_time.desc()).all()
+        
+        address_list = []
+        for addr in addresses:
+            address_list.append({
+                'id': addr.id,
+                'recipient': addr.recipient,
+                'phone': addr.phone,
+                'province': addr.province,
+                'city': addr.city,
+                'district': addr.district,
+                'detail_address': addr.detail_address,
+                'is_default': addr.is_default,
+                'full_address': f'{addr.province}{addr.city}{addr.district}{addr.detail_address}'
+            })
+        
+        return jsonify({
+            'code': 200,
+            'data': address_list
+        })
+    except Exception as e:
+        print(f'获取地址列表错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '获取地址列表失败：服务器内部错误'}), 500
+
+# 添加地址
+@student_bp.post('/addresses')
+@api_login_required
+def add_address():
+    try:
+        user_id = session['student_id']
+        data = request.get_json()
+        
+        # 验证必填字段
+        required_fields = ['recipient', 'phone', 'province', 'city', 'district', 'detail_address']
+        field_names = {
+            'recipient': '收货人姓名',
+            'phone': '联系电话',
+            'province': '省份',
+            'city': '城市',
+            'district': '区县',
+            'detail_address': '详细地址'
+        }
+        
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return jsonify({'code': 400, 'msg': f'{field_names[field]}不能为空'}), 400
+        
+        # 验证电话号码格式
+        if not re.match(r'^1[3-9]\d{9}$', data['phone'].strip()):
+            return jsonify({'code': 400, 'msg': '请输入正确的11位手机号码'}), 400
+        
+        # 验证姓名长度
+        if len(data['recipient'].strip()) > 50:
+            return jsonify({'code': 400, 'msg': '收货人姓名不能超过50个字符'}), 400
+        
+        # 验证地址字段长度
+        max_lengths = {
+            'province': 50,
+            'city': 50,
+            'district': 50,
+            'detail_address': 200
+        }
+        
+        for field, max_len in max_lengths.items():
+            if len(data[field].strip()) > max_len:
+                return jsonify({'code': 400, 'msg': f'{field_names[field]}不能超过{max_len}个字符'}), 400
+        
+        # 如果设置为默认地址，先将其他地址设为非默认
+        if data.get('is_default', False):
+            Address.query.filter_by(student_id=user_id).update({'is_default': False})
+        
+        # 创建地址
+        address = Address(
+            student_id=user_id,
+            recipient=data['recipient'].strip(),
+            phone=data['phone'].strip(),
+            province=data['province'].strip(),
+            city=data['city'].strip(),
+            district=data['district'].strip(),
+            detail_address=data['detail_address'].strip(),
+            is_default=data.get('is_default', False)
+        )
+        
+        db.session.add(address)
+        db.session.commit()
+        
+        # 构建完整地址信息
+        full_address = f'{address.province}{address.city}{address.district}{address.detail_address}'
+        
+        return jsonify({
+            'code': 200,
+            'msg': '地址添加成功',
+            'data': {
+                'id': address.id,
+                'recipient': address.recipient,
+                'phone': address.phone,
+                'province': address.province,
+                'city': address.city,
+                'district': address.district,
+                'detail_address': address.detail_address,
+                'is_default': address.is_default,
+                'full_address': full_address,
+                'create_time': address.create_time.strftime('%Y-%m-%d %H:%M:%S') if address.create_time else None
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'添加地址错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '添加地址失败：服务器内部错误'}), 500
+
+# 更新地址
+@student_bp.put('/addresses/<int:address_id>')
+@api_login_required
+def update_address(address_id):
+    try:
+        user_id = session['student_id']
+        address = Address.query.filter_by(id=address_id, student_id=user_id).first()
+        
+        if not address:
+            return jsonify({'code': 404, 'msg': '地址不存在'}), 404
+        
+        data = request.get_json()
+        
+        # 如果设置为默认地址，先将其他地址设为非默认
+        if data.get('is_default', False):
+            Address.query.filter_by(student_id=user_id).update({'is_default': False})
+        
+        # 更新地址信息
+        if 'recipient' in data:
+            address.recipient = data['recipient'].strip()
+        if 'phone' in data:
+            address.phone = data['phone'].strip()
+        if 'province' in data:
+            address.province = data['province'].strip()
+        if 'city' in data:
+            address.city = data['city'].strip()
+        if 'district' in data:
+            address.district = data['district'].strip()
+        if 'detail_address' in data:
+            address.detail_address = data['detail_address'].strip()
+        if 'is_default' in data:
+            address.is_default = data['is_default']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '地址更新成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'更新地址错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '更新地址失败：服务器内部错误'}), 500
+
+# 删除地址
+@student_bp.delete('/addresses/<int:address_id>')
+@api_login_required
+def delete_address(address_id):
+    try:
+        user_id = session['student_id']
+        address = Address.query.filter_by(id=address_id, student_id=user_id).first()
+        
+        if not address:
+            return jsonify({'code': 404, 'msg': '地址不存在'}), 404
+        
+        db.session.delete(address)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '地址删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'删除地址错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '删除地址失败：服务器内部错误'}), 500
+
+# 设置默认地址
+@student_bp.post('/addresses/<int:address_id>/default')
+@api_login_required
+def set_default_address(address_id):
+    try:
+        user_id = session['student_id']
+        address = Address.query.filter_by(id=address_id, student_id=user_id).first()
+        
+        if not address:
+            return jsonify({'code': 404, 'msg': '地址不存在'}), 404
+        
+        # 将所有地址设为非默认
+        Address.query.filter_by(student_id=user_id).update({'is_default': False})
+        # 设置当前地址为默认
+        address.is_default = True
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '设置默认地址成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'设置默认地址错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '设置默认地址失败：服务器内部错误'}), 500
 
 # 添加购物车
 @student_bp.route('/cart/add', methods=['POST'])
 @api_login_required
 def add_to_cart():
     try:
-        current_user = get_jwt_identity()
-        # 解析字符串格式的identity "user_type:user_id"
-        if isinstance(current_user, str) and ':' in current_user:
-            user_type, user_id = current_user.split(':')
-            if user_type != 'student':
-                return jsonify({'code': 403, 'msg': '权限错误'}), 403
-            current_user = {'type': user_type, 'id': int(user_id)}
-        else:
-            return jsonify({'code': 401, 'msg': '无效的身份信息'}), 401
+        # 从session中获取学生ID（api_login_required装饰器已经验证并设置了session['student_id']）
+        if 'student_id' not in session:
+            return jsonify({'code': 401, 'msg': '未登录'}), 401
         
-        data = request.json
+        student_id = session['student_id']
+        
+        # 获取和验证请求数据
+        data = request.json or {}
         dish_id = data.get('dish_id')
         quantity = data.get('quantity', 1)
         
+        # 验证菜品ID
         if not dish_id:
+            return jsonify({'code': 400, 'msg': '缺少菜品ID'}), 400
+            
+        try:
+            dish_id = int(dish_id)
+        except (ValueError, TypeError):
+            return jsonify({'code': 400, 'msg': '菜品ID格式错误'}), 400
+        
+        # 验证数量
+        try:
+            quantity = int(quantity)
+            if quantity <= 0:
+                return jsonify({'code': 400, 'msg': '数量必须大于0'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'code': 400, 'msg': '数量格式错误'}), 400
+        
+        # 使用数据库事务
+        try:
+            # 检查菜品是否存在
+            dish = Dish.query.get(dish_id)
+            if not dish:
+                return jsonify({'code': 404, 'msg': '菜品不存在'}), 404
+            
+            # 检查菜品是否上架
+            if not dish.is_shelf:
+                return jsonify({'code': 400, 'msg': '该菜品已下架'}), 400
+            
+            # 检查购物车中是否已有该菜品
+            cart_item = Cart.query.filter_by(
+                student_id=student_id,
+                dish_id=dish_id
+            ).first()
+            
+            if cart_item:
+                # 更新数量
+                cart_item.quantity += quantity
+            else:
+                # 创建新的购物车项
+                cart_item = Cart(
+                    student_id=student_id,
+                    dish_id=dish_id,
+                    quantity=quantity
+                )
+                db.session.add(cart_item)
+            
+            # 提交事务
+            db.session.commit()
+            
             return jsonify({
-                'code': 400,
-                'msg': '缺少菜品ID'
-            }), 400
-        
-        # 检查菜品是否存在
-        dish = Dish.query.get(dish_id)
-        if not dish:
+                'code': 200,
+                'msg': '添加购物车成功',
+                'data': {
+                    'dish_id': dish_id,
+                    'quantity': cart_item.quantity
+                }
+            })
+        except Exception as db_error:
+            db.session.rollback()
+            # 记录详细错误信息但返回通用错误给用户
+            print(f"数据库错误: {str(db_error)}")
             return jsonify({
-                'code': 404,
-                'msg': '菜品不存在'
-            }), 404
-        
-        # 检查菜品是否上架
-        if not dish.is_shelf:
-            return jsonify({
-                'code': 400,
-                'msg': '该菜品已下架'
-            }), 400
-        
-        # 检查购物车中是否已有该菜品
-        cart_item = Cart.query.filter_by(
-            student_id=current_user['id'],
-            dish_id=dish_id
-        ).first()
-        
-        if cart_item:
-            # 更新数量
-            cart_item.quantity += quantity
-        else:
-            # 创建新的购物车项
-            cart_item = Cart(
-                student_id=current_user['id'],
-                dish_id=dish_id,
-                quantity=quantity
-            )
-            db.session.add(cart_item)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'code': 200,
-            'msg': '添加购物车成功'
-        })
+                'code': 500,
+                'msg': '添加购物车失败：数据库操作异常'
+            }), 500
     except Exception as e:
-        db.session.rollback()
+        # 捕获所有其他异常
+        print(f"添加购物车异常: {str(e)}")
         return jsonify({
             'code': 500,
-            'msg': f'添加购物车失败：{str(e)}'
+            'msg': '添加购物车失败：服务器内部错误'
         }), 500
 
 @student_bp.route('/cart', methods=['GET'])
@@ -222,7 +607,7 @@ def get_cart():
         return jsonify({
             'code': 200,
             'msg': '获取购物车成功',
-            'data': cart_data
+            'data': {'items': cart_data}
         })
     except Exception as e:
         # 添加更详细的错误日志记录
@@ -232,24 +617,20 @@ def get_cart():
             'msg': f'获取购物车失败：{str(e)}'
         }), 500
 
-@student_bp.route('/cart/<int:cart_id>', methods=['PUT'])
+@student_bp.route('/cart/<int:dish_id>', methods=['PUT'])
 @api_login_required
-def update_cart_item(cart_id):
+def update_cart_item(dish_id):
     try:
-        current_user = get_jwt_identity()
-        # 解析字符串格式的identity "user_type:user_id"
-        if isinstance(current_user, str) and ':' in current_user:
-            user_type, user_id = current_user.split(':')
-            if user_type != 'student':
-                return jsonify({'code': 403, 'msg': '权限错误'}), 403
-            current_user = {'type': user_type, 'id': int(user_id)}
-        else:
-            return jsonify({'code': 401, 'msg': '无效的身份信息'}), 401
+        # 从session中获取学生ID（api_login_required装饰器已经验证并设置了session['student_id']）
+        if 'student_id' not in session:
+            return jsonify({'code': 401, 'msg': '未登录'}), 401
+        
+        student_id = session['student_id']
         
         data = request.json
         quantity = data.get('quantity', 1)
         
-        cart_item = Cart.query.filter_by(id=cart_id, student_id=current_user['id']).first()
+        cart_item = Cart.query.filter_by(dish_id=dish_id, student_id=student_id).first()
         if not cart_item:
             return jsonify({
                 'code': 404,
@@ -274,21 +655,17 @@ def update_cart_item(cart_id):
             'msg': f'更新失败：{str(e)}'
         }), 500
 
-@student_bp.route('/cart/<int:cart_id>', methods=['DELETE'])
+@student_bp.route('/cart/<int:dish_id>', methods=['DELETE'])
 @api_login_required
-def delete_cart_item(cart_id):
+def delete_cart_item(dish_id):
     try:
-        current_user = get_jwt_identity()
-        # 解析字符串格式的identity "user_type:user_id"
-        if isinstance(current_user, str) and ':' in current_user:
-            user_type, user_id = current_user.split(':')
-            if user_type != 'student':
-                return jsonify({'code': 403, 'msg': '权限错误'}), 403
-            current_user = {'type': user_type, 'id': int(user_id)}
-        else:
-            return jsonify({'code': 401, 'msg': '无效的身份信息'}), 401
+        # 从session中获取学生ID（api_login_required装饰器已经验证并设置了session['student_id']）
+        if 'student_id' not in session:
+            return jsonify({'code': 401, 'msg': '未登录'}), 401
         
-        cart_item = Cart.query.filter_by(id=cart_id, student_id=current_user['id']).first()
+        student_id = session['student_id']
+        
+        cart_item = Cart.query.filter_by(dish_id=dish_id, student_id=student_id).first()
         
         if not cart_item:
             return jsonify({
@@ -314,17 +691,13 @@ def delete_cart_item(cart_id):
 @api_login_required
 def clear_cart():
     try:
-        current_user = get_jwt_identity()
-        # 解析字符串格式的identity "user_type:user_id"
-        if isinstance(current_user, str) and ':' in current_user:
-            user_type, user_id = current_user.split(':')
-            if user_type != 'student':
-                return jsonify({'code': 403, 'msg': '权限错误'}), 403
-            current_user = {'type': user_type, 'id': int(user_id)}
-        else:
-            return jsonify({'code': 401, 'msg': '无效的身份信息'}), 401
+        # 从session中获取学生ID（api_login_required装饰器已经验证并设置了session['student_id']）
+        if 'student_id' not in session:
+            return jsonify({'code': 401, 'msg': '未登录'}), 401
         
-        cart_items = Cart.query.filter_by(student_id=current_user['id']).all()
+        student_id = session['student_id']
+        
+        cart_items = Cart.query.filter_by(student_id=student_id).all()
         
         for item in cart_items:
             db.session.delete(item)

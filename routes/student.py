@@ -63,6 +63,8 @@ def register():
     # 校验逻辑（示例）
     if Student.query.filter_by(student_id=student_id).first():
         return jsonify({'code': 400, 'msg': '学号已注册'})
+    if phone and Student.query.filter_by(phone=phone).first():
+        return jsonify({'code': 400, 'msg': '手机号已注册'})
     if len(password) < 8:
         return jsonify({'code': 400, 'msg': '密码需8-20位'})
     required = ['student_id', 'name', 'password']

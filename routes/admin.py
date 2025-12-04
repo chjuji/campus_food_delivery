@@ -534,6 +534,43 @@ def update_student_status():
         db.session.rollback()
         return jsonify({'code': 500, 'msg': f'操作失败：{str(e)}'})
 
+# 删除学生用户
+@admin_bp.route('/delete_student', methods=['POST'])
+@jwt_required()
+def delete_student():
+    try:
+        # 验证管理员权限
+        identity_str = get_jwt_identity()
+        # 解析身份字符串格式 "user_type:user_id"
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 导入Student模型
+        from models.student import Student
+        
+        data = request.get_json()
+        student_id = data.get('id')
+        
+        if not student_id:
+            return jsonify({'code': 400, 'msg': '学生ID不能为空'})
+        
+        # 查找学生
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '学生用户不存在'})
+        
+        # 删除学生
+        db.session.delete(student)
+        db.session.commit()
+        return jsonify({'code': 200, 'msg': '学生用户删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'code': 500, 'msg': f'删除失败：{str(e)}'})
+
 # 查看投诉
 @admin_bp.get('/complaints')
 @jwt_required()
@@ -609,9 +646,11 @@ def get_order_statistics():
         
         # 统计数据
         total_orders = len(orders)
-        completed_orders = sum(1 for order in orders if order.status == '已完成')
+        pending_orders = sum(1 for order in orders if order.status == '待接单')  # 待处理订单数：待接单订单的数量
+        processing_orders = sum(1 for order in orders if order.status == '待配送')  # 处理中订单数：配送中的订单数量（对应"待配送"状态）
+        delivered_orders = sum(1 for order in orders if order.status == '已送达')  # 已送达订单数
         cancelled_orders = sum(1 for order in orders if order.status == '已取消')
-        total_sales = sum(order.pay_amount for order in orders if order.status == '已完成')
+        total_sales = sum(order.pay_amount for order in orders if order.status == '已送达')  # 总销售额：已送达订单的实付金额总和
         
         # 按状态分组统计
         status_count = {}
@@ -642,19 +681,21 @@ def get_order_statistics():
                 'create_time': order.create_time.strftime('%Y-%m-%d %H:%M:%S')
             })
         
+        # 计算平均订单价值：总销售额除以已送达订单数
+        avg_order_value = round(total_sales / delivered_orders, 2) if delivered_orders > 0 else 0
+        
         # 返回统计数据
         return jsonify({
             'code': 200,
             'data': {
                 'summary': {
-                    'total_orders': total_orders,
-                    'completed_orders': completed_orders,
-                    'cancelled_orders': cancelled_orders,
-                    'pending_orders': status_count.get('待处理', 0),
-                    'processing_orders': status_count.get('处理中', 0),
-                    'delivered_orders': status_count.get('已送达', 0),
-                    'total_sales': round(total_sales, 2),
-                    'average_order_value': round(total_sales / completed_orders, 2) if completed_orders > 0 else 0
+                    'pending_orders': pending_orders,  # 待接单订单数
+                    'processing_orders': processing_orders,  # 配送中订单数
+                    'delivered_orders': delivered_orders,  # 已送达订单数
+                    'total_orders': total_orders,  # 总订单数
+                    'cancelled_orders': cancelled_orders,  # 已取消订单数
+                    'total_sales': round(total_sales, 2),  # 总销售额：已送达订单的实付金额总和
+                    'average_order_value': avg_order_value  # 平均订单价值：总销售额除以已送达订单数
                 },
                 'status_count': status_count,
                 'merchant_sales': merchant_sales,

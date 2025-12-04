@@ -618,10 +618,7 @@ def get_order_statistics():
         for order in orders:
             status_count[order.status] = status_count.get(order.status, 0) + 1
         
-        # 按支付方式统计
-        pay_type_count = {}
-        for order in orders:
-            pay_type_count[order.pay_type] = pay_type_count.get(order.pay_type, 0) + 1
+
         
         # 按商户统计销售
         merchant_sales = {}
@@ -640,7 +637,7 @@ def get_order_statistics():
                 'total_amount': order.total_amount,
                 'pay_amount': order.pay_amount,
                 'discount_amount': order.discount_amount,
-                'pay_type': order.pay_type,
+
                 'status': order.status,
                 'create_time': order.create_time.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -653,11 +650,13 @@ def get_order_statistics():
                     'total_orders': total_orders,
                     'completed_orders': completed_orders,
                     'cancelled_orders': cancelled_orders,
+                    'pending_orders': status_count.get('待处理', 0),
+                    'processing_orders': status_count.get('处理中', 0),
+                    'delivered_orders': status_count.get('已送达', 0),
                     'total_sales': round(total_sales, 2),
                     'average_order_value': round(total_sales / completed_orders, 2) if completed_orders > 0 else 0
                 },
                 'status_count': status_count,
-                'pay_type_count': pay_type_count,
                 'merchant_sales': merchant_sales,
                 'orders': order_list
             }

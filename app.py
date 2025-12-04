@@ -143,6 +143,14 @@ def create_app():
     @app.route('/student/complaints')
     def student_complaints_page():
         return render_template('student/complaints.html')
+    
+    @app.route('/student/set-pay-password')
+    def student_set_pay_password_page():
+        return render_template('student/set-pay-password.html')
+    
+    @app.route('/student/change-pay-password')
+    def student_change_pay_password_page():
+        return render_template('student/change-pay-password.html')
 
     # 商户端页面
     @app.route('/merchant/login')
@@ -159,11 +167,7 @@ def create_app():
         merchant_info = {}
         return render_template('merchant/index.html', merchant_info=merchant_info)
 
-    @app.route('/merchant/orders')
-    def merchant_orders_page():
-        # 传递空的merchant_info对象，避免模板渲染错误
-        merchant_info = {}
-        return render_template('merchant/orders.html', merchant_info=merchant_info)
+
 
     @app.route('/merchant/dishes')
     def merchant_dishes_page():
@@ -190,6 +194,12 @@ def create_app():
         merchant_info = {}
         return render_template('merchant/settings.html', merchant_info=merchant_info)
 
+    @app.route('/merchant/orders')
+    def merchant_orders_page():
+        # 从merchant.py导入merchant_orders函数
+        from routes.merchant import merchant_orders
+        return merchant_orders()
+
     @app.route('/merchant/dish/add_dish')
     def merchant_add_dish_page():
         # 传递空的merchant_info对象，避免模板渲染错误
@@ -215,7 +225,7 @@ def create_app():
         model_modules = [
             'models.student', 'models.merchant', 'models.order', 'models.dish',
             'models.cart', 'models.comment', 'models.complaint', 'models.coupon',
-            'models.platform_config', 'models.address'
+            'models.platform_config', 'models.address', 'models.admin'
         ]
         for m in model_modules:
             try:
@@ -268,6 +278,22 @@ def create_app():
                 print('初始化平台配置数据时出错：', e)
                 db.session.rollback()
             
+            
+            # # 检查学生表是否有新增的pay_password字段
+            # inspector = inspect(db.engine)
+            # student_columns = [col['name'] for col in inspector.get_columns('student')]
+            
+            # # 如果缺少pay_password字段，使用ALTER TABLE添加字段
+            # if 'pay_password' not in student_columns:
+            #     print('检测到学生表缺少pay_password字段')
+            #     print('正在更新数据库结构...')
+                
+            #     # 使用SQLAlchemy的DDL语句添加缺失字段
+            #     from sqlalchemy import text
+            #     db.session.execute(text("ALTER TABLE student ADD COLUMN pay_password VARCHAR(128) DEFAULT NULL"))
+            #     db.session.commit()
+            #     print('学生表pay_password字段添加完成')
+
             # # 检查学生表是否有新增字段
             # inspector = inspect(db.engine)
             # student_columns = [col['name'] for col in inspector.get_columns('student')]
@@ -294,12 +320,12 @@ def create_app():
             #     db.session.commit()
             #     print('数据库结构更新完成')
             
-            # # 检查商户表是否有新增字段
+            # 检查商户表是否有新增字段
             # inspector = inspect(db.engine)
             # merchant_columns = [col['name'] for col in inspector.get_columns('merchant')]
             
             # # 如果缺少新增字段，使用ALTER TABLE添加字段，避免数据丢失
-            # new_columns = ['description', 'business_hours', 'is_open']
+            # new_columns = ['description', 'business_hours', 'is_open', 'wallet']
             # missing_columns = [col for col in new_columns if col not in merchant_columns]
             
             # if missing_columns:
@@ -319,6 +345,9 @@ def create_app():
             #         elif column == 'is_open':
             #             # 添加BOOLEAN类型的is_open字段，默认值为True
             #             db.session.execute(text("ALTER TABLE merchant ADD COLUMN is_open BOOLEAN DEFAULT TRUE"))
+            #         elif column == 'wallet':
+            #             # 添加DECIMAL类型的wallet字段，默认值为0.00，保留两位小数
+            #             db.session.execute(text("ALTER TABLE merchant ADD COLUMN wallet DECIMAL(10,2) DEFAULT 0.00"))
                 
             #     db.session.commit()
             #     print('数据库结构更新完成')

@@ -125,7 +125,6 @@
                                 <th>菜品名称</th>
                                 <th>销量</th>
                                 <th>销售额</th>
-                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="popularDishesTable">
@@ -142,7 +141,7 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
+<script>
     let merchantId = 0;
     let ctx = null;
     let salesChart = null;
@@ -171,15 +170,61 @@
 
     // 初始化销售趋势图
     function initChart() {
-        // 简化图表初始化，避免使用真实的Chart对象
-        const canvas = document.getElementById('chartCanvas');
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          // 绘制简单的文本提示，而不是创建实际的Chart
-          ctx.fillStyle = '#333';
-          ctx.font = '14px Arial';
-          ctx.fillText('图表数据：近期销售额', 20, 30);
-          ctx.fillText('(由于技术原因暂不显示图表)', 20, 50);
+        const ctx = document.getElementById('chartCanvas');
+        if (ctx) {
+            // 创建小时标签
+            const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+
+            // 创建空的小时销售数据
+            const emptyData = Array.from({ length: 24 }, () => 0);
+
+            salesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hourLabels,
+                    datasets: [{
+                        label: '订单数',
+                        data: emptyData,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '订单数'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间'
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -187,10 +232,10 @@
     function loadStatistics() {
         const token = localStorage.getItem('merchant_token');
         $.ajax({
-            url: '/api/merchant/statistics',
+            url: '/api/merchant/statistics_data',
             headers: { 'Authorization': `Bearer ${token}` },
             success: function (res) {
-                if (res.code === 200) {
+                if (res.success && res.data) {
                     const data = res.data;
                     $('#todayOrders').text(data.today_orders || 0);
                     $('#todayIncome').text('¥' + (data.today_income || 0).toFixed(2));
@@ -198,8 +243,8 @@
                     $('#activeDishes').text(data.active_dishes || 0);
 
                     // 更新销售趋势图
-                    if (data.hourly_sales) {
-                        salesChart.data.datasets[0].data = data.hourly_sales;
+                    if (data.hourly_orders) {
+                        salesChart.data.datasets[0].data = data.hourly_orders;
                         salesChart.update();
                     }
                 }
@@ -214,27 +259,33 @@
             url: '/api/merchant/orders?limit=5&sort=latest',
             headers: { 'Authorization': `Bearer ${token}` },
             success: function (res) {
-                if (res.code === 200) {
+                if (res.success === true) {
                     let html = '';
                     if (res.data.length === 0) {
                         html = '<tr><td colspan="4" class="text-center text-muted">暂无订单</td></tr>';
                     } else {
                         res.data.forEach(order => {
                             const statusClass = {
-                                '待接单': 'badge bg-warning',
-                                '制作中': 'badge bg-primary',
-                                '待配送': 'badge bg-info',
-                                '配送中': 'badge bg-secondary',
-                                '已完成': 'badge bg-success',
-                                '已取消': 'badge bg-danger'
-                            }[order.status] || 'badge bg-secondary';
+                                '待支付': 'badge bg-warning text-white',
+                                '待接单': 'badge bg-info text-white',
+                                '制作中': 'badge bg-primary text-white',
+                                '待配送': 'badge bg-info text-white',
+                                '配送中': 'badge bg-secondary text-white',
+                                '已完成': 'badge bg-success text-white',
+                                '已取消': 'badge bg-danger text-white',
+                                'pending': 'badge bg-warning text-white',
+                                'preparing': 'badge bg-info text-white',
+                                'delivering': 'badge bg-primary text-white',
+                                'delivered': 'badge bg-success text-white',
+                                'cancelled': 'badge bg-danger text-white'
+                            }[order.status] || 'badge bg-secondary text-white';
 
                             html += `
                                 <tr>
                                     <td>${order.order_no}</td>
                                     <td>¥${order.pay_amount}</td>
                                     <td><span class="${statusClass}">${order.status}</span></td>
-                                    <td>${formatDate(order.created_at)}</td>
+                                    <td>${formatDate(order.create_time)}</td>
                                 </tr>
                             `;
                         });
@@ -252,10 +303,10 @@
             url: '/api/merchant/dishes/popular?limit=10',
             headers: { 'Authorization': `Bearer ${token}` },
             success: function (res) {
-                if (res.code === 200) {
+                if (res.success === true) {
                     let html = '';
                     if (res.data.length === 0) {
-                        html = '<tr><td colspan="5" class="text-center text-muted">暂无销售数据</td></tr>';
+                        html = '<tr><td colspan="4" class="text-center text-muted">暂无销售数据</td></tr>';
                     } else {
                         res.data.forEach((dish, index) => {
                             html += `
@@ -267,9 +318,6 @@
                                     </td>
                                     <td>${dish.sales}</td>
                                     <td>¥${(dish.total_amount || 0).toFixed(2)}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="viewDishDetail(${dish.id})">详情</button>
-                                    </td>
                                 </tr>
                             `;
                         });
@@ -280,9 +328,5 @@
         });
     }
 
-    // 查看菜品详情
-    function viewDishDetail(dishId) {
-        window.location.href = `/merchant/dish/detail/${dishId}`;
-    }
 </script>
 {% endblock %}

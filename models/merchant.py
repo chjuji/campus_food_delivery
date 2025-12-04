@@ -19,6 +19,7 @@ class Merchant(db.Model):
     service_fee = db.Column(db.Float, default=0.05, comment='平台服务费比例')
     create_time = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     password = db.Column(db.String(128), nullable=False)
+    wallet = db.Column(db.DECIMAL(10, 2), default=0.00, comment='商户钱包余额')
 
     # 关联关系
     dishes = db.relationship('Dish', backref='merchant', lazy=True)

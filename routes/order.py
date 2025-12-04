@@ -1,30 +1,45 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.order import Order, Refund
 from models.cart import Cart
 from models.dish import Dish
+from models.student import Student
 from services.payment_service import simulate_payment
 from extensions import db
 from routes.student import api_login_required
+import bcrypt
 
 order_bp = Blueprint('order', __name__)
 
 # 支付订单
 @order_bp.post('/pay/<int:order_id>')
-@jwt_required()
+@api_login_required
 def pay_order(order_id):
-    identity = get_jwt_identity()
-    data = request.get_json()
-    pay_type = data.get('pay_type', 'wechat')
-    
+    # 获取当前登录学生ID
+    student_id = session['student_id']
     order = Order.query.get(order_id)
     if not order:
         return jsonify({'code': 404, 'msg': '订单不存在'}), 404
-    if order.student_id != identity['id']:
+    if order.student_id != student_id:
         return jsonify({'code': 403, 'msg': '无权操作此订单'}), 403
     
+    # 验证支付密码
+    data = request.get_json()
+    pay_password = data.get('pay_password')
+    if not pay_password:
+        return jsonify({'code': 400, 'msg': '请输入支付密码'}), 400
+    
+    # 获取学生信息
+    student = Student.query.get(student_id)
+    if not student:
+        return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+    
+    # 验证支付密码
+    if not bcrypt.checkpw(pay_password.encode('utf-8'), student.pay_password.encode('utf-8')):
+        return jsonify({'code': 400, 'msg': '支付密码错误'}), 400
+    
     try:
-        simulate_payment(order_id, pay_type)
+        simulate_payment(order_id)
         return jsonify({'code': 200, 'msg': '支付成功'})
     except Exception as e:
         return jsonify({'code': 500, 'msg': str(e)}), 500

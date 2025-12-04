@@ -25,25 +25,35 @@ def login_required(f):
 # 检查商户是否已登录的装饰器（API路由用）
 def api_login_required(f):
     def decorated_function(*args, **kwargs):
+        merchant = None
         try:
+            # print(f"[DEBUG] Session内容: {dict(session)}")
             # 首先检查session中是否有登录信息
             if 'merchant_id' in session:
-                return f(*args, **kwargs)
+                # print(f"[DEBUG] Session中有merchant_id: {session['merchant_id']}")
+                merchant = Merchant.query.get(session['merchant_id'])
+                # print(f"[DEBUG] 根据merchant_id查询到商户: {merchant}")
+                if merchant:
+                    return f(*args, **kwargs)
             
             # 然后检查JWT token
             from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
             verify_jwt_in_request(optional=True)
             identity = get_jwt_identity()
+            # print(f"[DEBUG] JWT identity: {identity}")
             
             if identity and ':' in identity:
                 user_type, user_id = identity.split(':', 1)
                 if user_type == 'merchant':
-                    # 将merchant_id添加到session中以便后续使用
-                    session['merchant_id'] = int(user_id)
-                    return f(*args, **kwargs)
+                    merchant = Merchant.query.get(int(user_id))
+                    if merchant:
+                        # 将merchant_id添加到session中以便后续使用
+                        session['merchant_id'] = int(user_id)
+                        return f(*args, **kwargs)
         except Exception as e:
             # 记录异常但不暴露具体错误信息
-            print(f"JWT验证错误: {str(e)}")
+            print(f"[DEBUG] 认证过程中发生异常: {str(e)}")
+            pass
         
         return jsonify({'code': 401, 'msg': '未登录'}), 401
     decorated_function.__name__ = f.__name__
@@ -148,7 +158,6 @@ def merchant_index():
         return redirect(url_for('merchant.login_page'))
     return render_template('merchant/index.html', merchant_info=merchant)
 
-@merchant_bp.route('/orders', methods=['GET'])
 @login_required
 def merchant_orders():
     merchant = get_current_merchant()
@@ -384,21 +393,92 @@ def merchant_logout():
     return jsonify({'success': True, 'message': '登出成功'})
 
 # 统计数据API
-@merchant_bp.route('/statistics', methods=['GET'])
+@merchant_bp.route('/statistics_data', methods=['GET'])
 @api_login_required
 def get_merchant_statistics():
     merchant = get_current_merchant()
     if not merchant:
         return jsonify({'success': False, 'message': '未登录'})
     
-    # 模拟统计数据
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+    
+    # 获取时间范围参数，默认为1天
+    days = request.args.get('days', 1, type=int)
+    
+    # 计算开始时间
+    today = datetime.now()
+    today_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # 近1天指的是今天（从今天凌晨0点开始）
+    # 近N天指的是从N-1天前的凌晨0点到现在（例如近3天是前天、昨天、今天）
+    start_time = today_start - timedelta(days=days-1)
+    
+    # 订单数（已送达）
+    total_orders = Order.query.filter_by(
+        merchant_id=merchant.id,
+        status='已送达'
+    ).filter(Order.create_time >= start_time).count()
+    
+    # 收入（已送达订单的实付金额总和）
+    total_income = db.session.query(func.sum(Order.pay_amount)).filter_by(
+        merchant_id=merchant.id,
+        status='已送达'
+    ).filter(Order.create_time >= start_time).scalar() or 0
+    
+    # 待处理订单数（待接单和制作中）
+    pending_orders = Order.query.filter_by(
+        merchant_id=merchant.id
+    ).filter(Order.status.in_(['待接单', '制作中', '待配送'])).count()
+    
+    # 售出菜品数（统计指定时间范围内所有已送达订单中的菜品总数）
+    total_dishes_sold = db.session.query(func.sum(OrderItem.quantity)).join(
+        Order, Order.id == OrderItem.order_id
+    ).filter(
+        Order.merchant_id == merchant.id,
+        Order.status == '已送达',
+        Order.create_time >= start_time
+    ).scalar() or 0
+    
+    # 小时级销售数据和订单数
+    hourly_sales = []
+    hourly_orders = []
+    
+    # 获取今日每小时的销售数据和订单数
+    for hour in range(24):
+        # 计算当前小时的开始和结束时间
+        hour_start = today_start + timedelta(hours=hour)
+        hour_end = hour_start + timedelta(hours=1)
+        
+        # 查询当前小时的销售额
+        hour_sales = db.session.query(func.sum(Order.pay_amount)).filter_by(
+            merchant_id=merchant.id,
+            status='已送达'
+        ).filter(
+            Order.create_time >= hour_start,
+            Order.create_time < hour_end
+        ).scalar() or 0
+        
+        # 查询当前小时的订单数
+        hour_order_count = Order.query.filter_by(
+            merchant_id=merchant.id,
+            status='已送达'
+        ).filter(
+            Order.create_time >= hour_start,
+            Order.create_time < hour_end
+        ).count()
+        
+        hourly_sales.append(float(hour_sales))
+        hourly_orders.append(hour_order_count)
+    
+    # 构建统计数据
     statistics = {
-        'today_orders': 0,
-        'today_sales': 0,
-        'total_orders': 0,
-        'total_sales': 0,
-        'active_dishes': 0,
-        'pending_orders': 0
+        'total_orders': total_orders,
+        'total_income': total_income,
+        'pending_orders': pending_orders,
+        'total_dishes_sold': total_dishes_sold,
+        'hourly_sales': hourly_sales,
+        'hourly_orders': hourly_orders
     }
     
     return jsonify({'success': True, 'data': statistics})
@@ -411,13 +491,59 @@ def get_merchant_orders():
     if not merchant:
         return jsonify({'success': False, 'message': '未登录'})
     
+    # 获取查询参数
+    page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 10, type=int)
     sort = request.args.get('sort', 'latest')
+    order_no = request.args.get('order_no', '')
+    status = request.args.get('status', '')
     
-    # 模拟订单数据
+    # 构建查询
+    query = Order.query.filter_by(merchant_id=merchant.id)
+    
+    # 订单号筛选
+    if order_no:
+        query = query.filter(Order.order_no.like(f'%{order_no}%'))
+    
+    # 状态筛选
+    if status:
+        query = query.filter_by(status=status)
+    
+    # 排序
+    if sort == 'latest':
+        query = query.order_by(Order.create_time.desc())
+    elif sort == 'amount':
+        query = query.order_by(Order.total_amount.desc())
+    
+    # 分页
+    pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    
+    # 格式化订单数据
     orders = []
+    for order in pagination.items:
+        order_data = order.to_dict()
+        # 添加订单商品信息
+        order_data['items'] = []
+        for item in order.order_items:
+            # 从Dish模型获取菜品名称
+            dish = Dish.query.get(item.dish_id)
+            dish_name = dish.dish_name if dish else '未知菜品'
+            order_data['items'].append({
+                'id': item.id,
+                'dish_id': item.dish_id,
+                'dish_name': dish_name,
+                'quantity': item.quantity,
+                'price': item.price
+            })
+        orders.append(order_data)
     
-    return jsonify({'success': True, 'data': orders, 'total': 0})
+    return jsonify({
+        'success': True, 
+        'data': orders, 
+        'total': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages
+    })
 
 # 菜品相关API
 @merchant_bp.route('/dishes/popular', methods=['GET'])
@@ -429,10 +555,108 @@ def get_popular_dishes():
     
     limit = request.args.get('limit', 10, type=int)
     
-    # 模拟热门菜品数据
+    # 统计热销菜品：根据订单商品数量统计（仅统计已送达订单）
+    from sqlalchemy import func
+    
+    # 先创建子查询，统计已送达订单中的菜品销量
+    sales_subquery = db.session.query(
+        OrderItem.dish_id,
+        func.sum(OrderItem.quantity).label('total_sales')
+    ).join(
+        Order, OrderItem.order_id == Order.id
+    ).filter(
+        Order.status == '已送达'  # 只统计已送达订单
+    ).group_by(
+        OrderItem.dish_id
+    ).subquery()
+    
+    # 查询当前商家的所有菜品，按销售量排序
+    popular_dishes_query = db.session.query(
+        Dish,
+        func.coalesce(sales_subquery.c.total_sales, 0).label('total_sales')
+    ).outerjoin(
+        sales_subquery, Dish.id == sales_subquery.c.dish_id
+    ).filter(
+        Dish.merchant_id == merchant.id,
+        Dish.is_shelf == True
+    ).order_by(
+        func.coalesce(sales_subquery.c.total_sales, 0).desc()
+    ).limit(limit)
+    
+    popular_dishes = popular_dishes_query.all()
+    
+    # 格式化返回数据
     dishes = []
+    for dish, total_sales in popular_dishes:
+        sales = total_sales or 0
+        total_amount = sales * dish.price  # 计算总销售额
+        
+        dishes.append({
+            'id': dish.id,
+            'dish_name': dish.dish_name,
+            'price': dish.price,
+            'sales': sales,
+            'total_amount': total_amount,
+            'img_url': dish.img_url,
+            'category': dish.category
+        })
     
     return jsonify({'success': True, 'data': dishes})
+
+@merchant_bp.route('/orders/<int:order_id>', methods=['GET'])
+@api_login_required
+def get_merchant_order_detail(order_id):
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    order = Order.query.filter_by(id=order_id, merchant_id=merchant.id).first()
+    if not order:
+        return jsonify({'success': False, 'message': '订单不存在'})
+    
+    # 获取订单商品
+    order_items = OrderItem.query.filter_by(order_id=order_id).all()
+    items = []
+    for item in order_items:
+        # 从Dish模型获取菜品名称
+        dish = Dish.query.get(item.dish_id)
+        dish_name = dish.dish_name if dish else '未知菜品'
+        
+        items.append({
+            'id': item.id,
+            'dish_name': dish_name,
+            'price': item.price,
+            'quantity': item.quantity,
+            'dish_id': item.dish_id
+        })
+    
+    # 从Admin表获取配送费
+    from models.admin import Admin
+    admin_config = Admin.get_config()
+    delivery_fee = float(admin_config.delivery_fee)
+    
+    # 构造返回数据
+    order_data = {
+        'id': order.id,
+        'order_no': order.order_no,
+        'student_id': order.student_id,
+        'status': order.status,
+        'total_amount': order.total_amount,
+        'pay_amount': order.pay_amount,
+        'discount_amount': order.discount_amount,
+        'delivery_fee': delivery_fee,  # 从Admin表获取的配送费
+        'address': order.address,
+        'remark': order.remark,
+        'create_time': order.create_time.strftime('%Y-%m-%d %H:%M:%S') if order.create_time else None,
+        'pay_time': order.pay_time.strftime('%Y-%m-%d %H:%M:%S') if order.pay_time else None,
+        'finish_time': order.finish_time.strftime('%Y-%m-%d %H:%M:%S') if order.finish_time else None,
+        'items': items
+    }
+    
+    return jsonify({
+        'success': True,
+        'data': order_data
+    })
 
 @merchant_bp.route('/orders/<int:order_id>/status', methods=['PUT'])
 @api_login_required
@@ -443,6 +667,36 @@ def update_order_status(order_id):
     
     data = request.get_json()
     new_status = data.get('status')
+    
+    from models.order import Order
+    order = Order.query.filter_by(id=order_id, merchant_id=merchant.id).first()
+    if not order:
+        return jsonify({'success': False, 'message': '订单不存在'})
+    
+    # 状态验证和转换
+    valid_statuses = ['待支付', '待接单', '待配送', '已送达', '已取消']
+    if new_status not in valid_statuses:
+        return jsonify({'success': False, 'message': '无效的订单状态'})
+    
+    # 状态转换逻辑
+    status_transitions = {
+        '待支付': ['待接单', '已取消'],
+        '待接单': ['待配送', '已取消'],
+        '待配送': ['已送达'],
+        '已送达': [],
+        '已取消': []
+    }
+    
+    if new_status not in status_transitions.get(order.status, []):
+        return jsonify({'success': False, 'message': '状态转换不允许'})
+    
+    # 更新状态
+    order.status = new_status
+    db.session.commit()
+    
+    # 发送通知
+    from services.notification_service import send_order_notification
+    send_order_notification(order.student.phone, order.order_no, new_status)
     
     return jsonify({'success': True, 'message': '订单状态已更新'})
 
@@ -626,6 +880,7 @@ def get_merchant_profile():
             'address': merchant.address,
             'status': merchant.status,
             'service_fee': merchant.service_fee,
+            'wallet': merchant.wallet,
             'create_time': merchant.create_time.isoformat() if merchant.create_time else None
         }
     })
@@ -1010,9 +1265,9 @@ def accept_order(order_id):
     from models.order import Order
     order = Order.query.filter_by(id=order_id, merchant_id=merchant.id).first()
     if not order:
-        return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        return jsonify({'success': False, 'message': '订单不存在'}), 404
     if order.status != '待接单':
-        return jsonify({'code': 400, 'msg': '订单状态错误'}), 400
+        return jsonify({'success': False, 'message': '订单状态错误'}), 400
     
     order.status = '待配送'
     db.session.commit()
@@ -1021,4 +1276,4 @@ def accept_order(order_id):
     from services.notification_service import send_order_notification
     send_order_notification(order.student.phone, order.order_no, '待配送')
     
-    return jsonify({'code': 200, 'msg': '接单成功'})
+    return jsonify({'success': True, 'message': '接单成功'})

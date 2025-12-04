@@ -3,21 +3,21 @@
 {% block title %}订单管理 - 商户后台{% endblock %}
 
 {% block sidebar %}
-    <a class="nav-link" href="/merchant/index">
-        <i class="fas fa-tachometer-alt"></i> 控制台
-    </a>
-    <a class="nav-link active" href="/merchant/orders">
-        <i class="fas fa-shopping-bag"></i> 订单管理
-    </a>
-    <a class="nav-link" href="/merchant/dishes">
-        <i class="fas fa-utensils"></i> 菜品管理
-    </a>
-    <a class="nav-link" href="/merchant/statistics">
-        <i class="fas fa-chart-bar"></i> 经营统计
-    </a>
-    <a class="nav-link" href="/merchant/settings">
-        <i class="fas fa-cog"></i> 商铺设置
-    </a>
+<a class="nav-link" href="/merchant/index">
+    <i class="fas fa-tachometer-alt"></i> 控制台
+</a>
+<a class="nav-link active" href="/merchant/orders">
+    <i class="fas fa-shopping-bag"></i> 订单管理
+</a>
+<a class="nav-link" href="/merchant/dishes">
+    <i class="fas fa-utensils"></i> 菜品管理
+</a>
+<a class="nav-link" href="/merchant/statistics">
+    <i class="fas fa-chart-bar"></i> 经营统计
+</a>
+<a class="nav-link" href="/merchant/settings">
+    <i class="fas fa-cog"></i> 商铺设置
+</a>
 {% endblock %}
 
 {% block header %}订单管理{% endblock %}
@@ -30,54 +30,464 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5>订单列表</h5>
-        <div>
-            <input type="text" id="orderSearch" class="form-control form-control-sm d-inline-block w-25" placeholder="搜索订单号">
-            <select id="orderStatus" class="form-control form-control-sm d-inline-block w-25 ml-2">
-                <option value="">全部状态</option>
-                <option value="pending">待处理</option>
-                <option value="processing">处理中</option>
-                <option value="completed">已完成</option>
-                <option value="cancelled">已取消</option>
-            </select>
+        <div class="mb-2">
+            <input type="text" id="orderSearch" class="form-control form-control-sm d-inline-block w-100"
+                placeholder="搜索订单号">
+        </div>
+        <!-- 订单状态筛选 -->
+        <div class="mb-4">
+            <div class="btn-group" role="group" aria-label="订单状态筛选">
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('all')">全部订单</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('待支付')">待支付</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('待接单')">待接单</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('待配送')">配送中</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('已送达')">已送达</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('已取消')">已取消</button>
+            </div>
         </div>
     </div>
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>订单号</th>
-                        <th>下单时间</th>
-                        <th>总金额</th>
-                        <th>客户信息</th>
-                        <th>订单状态</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersTable">
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">暂无订单数据</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- 订单列表 -->
+        <div id="orderList" class="mb-4">
+            <div class="text-center text-muted">暂无订单数据</div>
         </div>
-        <div class="mt-3 d-flex justify-content-center">
-            <nav aria-label="Page navigation">
-                <ul class="pagination">
-                    <li class="page-item disabled"><a class="page-link" href="#">上一页</a></li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item disabled"><a class="page-link" href="#">下一页</a></li>
-                </ul>
-            </nav>
+
+        <!-- 订单详情模态框 -->
+        <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="orderDetailModalLabel">订单详情</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="orderDetailContent">
+                        <!-- 订单详情内容将通过JavaScript动态加载 -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- 分页控件 -->
+        <nav id="pagination" class="mt-4" aria-label="分页">
+        </nav>
     </div>
 </div>
 
+
+<style>
+    .order-item {
+        margin-bottom: 20px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .order-header {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .order-body {
+        padding: 15px;
+    }
+
+    .dish-item {
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #eee;
+    }
+
+    .dish-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .order-footer {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        text-align: right;
+        border-top: 1px solid #eee;
+    }
+
+    .status-badge {
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+</style>
 <script>
-// 模拟加载订单数据
-window.onload = function() {
-    // 实际应用中应该通过API获取订单数据
-    console.log('订单管理页面已加载');
-};
+    // 全局变量用于跟踪当前筛选条件
+    let currentPage = 1;
+    let currentStatus = 'all';
+    let currentKeyword = '';
+
+    // 加载订单数据
+    function loadOrders(page = 1, status = 'all', keyword = '') {
+        // 更新全局变量
+        currentPage = page;
+        currentStatus = status;
+        currentKeyword = keyword;
+
+        // 获取搜索条件
+        const orderNo = keyword || document.getElementById('orderSearch').value;
+        const statusParam = status === 'all' ? '' : status;
+
+        // 构建请求URL
+        const url = `/api/merchant/orders?page=${page}&order_no=${encodeURIComponent(orderNo)}&status=${encodeURIComponent(statusParam)}`;
+
+        // 发送请求
+        fetch(url, {
+            credentials: 'include'  // 包含cookies，用于认证
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderOrders(data.data);
+                    renderPagination(data.page, data.pages);
+                } else {
+                    alert('获取订单失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('获取订单失败：', error);
+                alert('获取订单失败，请重试');
+            });
+    }
+
+    // 渲染订单列表
+    function renderOrders(orders) {
+        const orderList = document.getElementById('orderList');
+
+        if (orders.length === 0) {
+            orderList.innerHTML = '<div class="text-center text-muted">暂无订单数据</div>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(order => {
+            // 获取状态文本和样式
+            const statusInfo = getStatusInfo(order.status);
+
+            html += `
+                    <div class="order-item">
+                        <div class="order-header d-flex justify-content-between align-items-center">
+                            <span>订单号：${order.order_no}</span>
+                            <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
+                        </div>
+                        <div class="order-body">
+                            <div class="mb-2">学生ID：${order.student_id}</div>
+                `;
+
+            // 订单商品列表
+            if (order.items && order.items.length > 0) {
+                order.items.forEach(item => {
+                    html += `
+                            <div class="dish-item d-flex justify-content-between align-items-center">
+                                <div>${item.dish_name}</div>
+                                <div class="d-flex gap-3">
+                                    <span>¥${item.price.toFixed(2)}</span>
+                                    <span>×${item.quantity}</span>
+                                </div>
+                            </div>
+                        `;
+                });
+            }
+
+            html += `
+                        </div>
+                        <div class="order-footer d-flex justify-content-between align-items-center">
+                            <span>下单时间：${formatDate(order.create_time)}</span>
+                            <div class="d-flex gap-2">
+                                <span class="text-danger fw-bold">总计：¥${order.total_amount.toFixed(2)}</span>
+                                <button class="btn btn-sm btn-outline-primary" onclick="viewOrderDetail(${order.id})">查看详情</button>
+                                ${order.status === '待接单' ? `<button class="btn btn-sm btn-success" onclick="acceptOrder(${order.id})">接单</button>` : ''}
+                                ${order.status === '待配送' ? `<button class="btn btn-sm btn-success" onclick="completeOrder(${order.id})">送达</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+        });
+
+        orderList.innerHTML = html;
+    }
+
+    // 渲染分页
+    function renderPagination(currentPage, totalPages) {
+        const pagination = document.getElementById('pagination');
+
+        if (totalPages <= 1) {
+            pagination.innerHTML = `
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled"><a class="page-link" href="#">上一页</a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item disabled"><a class="page-link" href="#">下一页</a></li>
+            </ul>
+        `;
+            return;
+        }
+
+        let html = `<ul class="pagination justify-content-center">`;
+
+        // 上一页
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadOrders(${currentPage - 1})">&laquo;</a>
+            </li>`;
+
+        // 页码
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                html += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
+            } else {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadOrders(${i})">${i}</a></li>`;
+            }
+        }
+
+        // 下一页
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadOrders(${currentPage + 1})">&raquo;</a>
+            </li>`;
+
+        html += `</ul>`;
+        pagination.innerHTML = html;
+    }
+
+    // 获取订单状态信息
+    function getStatusInfo(status) {
+        const statusStyles = {
+            '待支付': { text: '待支付', class: 'bg-warning text-white' },
+            '已支付': { text: '已支付', class: 'bg-info text-white' },
+            '待接单': { text: '待接单', class: 'bg-info text-white' },
+            '待配送': { text: '配送中', class: 'bg-primary text-white' },
+            '已完成': { text: '已送达', class: 'bg-success text-white' },
+            '已送达': { text: '已送达', class: 'bg-success text-white' },
+            '已取消': { text: '已取消', class: 'bg-secondary text-white' },
+            // 兼容英文状态值
+            'pending': { text: '待支付', class: 'bg-warning text-white' },
+            'preparing': { text: '待接单', class: 'bg-info text-white' },
+            'delivering': { text: '配送中', class: 'bg-primary text-white' },
+            'delivered': { text: '已送达', class: 'bg-success text-white' },
+            'cancelled': { text: '已取消', class: 'bg-secondary text-white' }
+        };
+        return statusStyles[status] || { text: status, class: 'bg-secondary text-white' };
+    }
+
+    // 格式化日期时间
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    // 查看订单详情
+    function viewOrderDetail(orderId) {
+        fetch(`/api/merchant/orders/${orderId}`, {
+            credentials: 'include'  // 包含cookies，用于认证
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    showOrderDetail(data.data);
+                } else {
+                    alert('获取订单详情失败：' + (data.msg || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('获取订单详情出错：', error);
+                alert('获取订单详情出错');
+            });
+    }
+
+    // 显示订单详情
+    function showOrderDetail(order) {
+        const statusInfo = getStatusInfo(order.status);
+        let html = `
+            <dl class="row mb-3">
+                <dt class="col-sm-3">订单编号：</dt>
+                <dd class="col-sm-9">${order.order_no}</dd>
+                <dt class="col-sm-3">订单ID：</dt>
+                <dd class="col-sm-9">${order.id}</dd>
+                <dt class="col-sm-3">订单状态：</dt>
+                <dd class="col-sm-9"><span class="badge ${statusInfo.class}">${statusInfo.text}</span></dd>
+                <dt class="col-sm-3">学生ID：</dt>
+                <dd class="col-sm-9">${order.student_id}</dd>
+                <dt class="col-sm-3">下单时间：</dt>
+                <dd class="col-sm-9">${formatDate(order.create_time)}</dd>
+        `;
+
+        // 显示支付时间（如果有）
+        if (order.pay_time) {
+            html += `
+                <dt class="col-sm-3">支付时间：</dt>
+                <dd class="col-sm-9">${formatDate(order.pay_time)}</dd>
+            `;
+        }
+
+        // 显示完成时间（如果有）
+        if (order.finish_time) {
+            html += `
+                <dt class="col-sm-3">完成时间：</dt>
+                <dd class="col-sm-9">${formatDate(order.finish_time)}</dd>
+            `;
+        }
+
+        html += `
+                <dt class="col-sm-3">收货地址：</dt>
+                <dd class="col-sm-9">${order.address || '暂无地址信息'}</dd>
+        `;
+
+        // 显示备注（如果有）
+        if (order.remark) {
+            html += `
+                <dt class="col-sm-3">备注：</dt>
+                <dd class="col-sm-9">${order.remark}</dd>
+            `;
+        }
+
+        html += `
+            </dl>
+            <h6 class="mb-2">商品清单</h6>
+            <table class="table table-sm mb-3">
+                <thead>
+                    <tr>
+                        <th>商品名称</th>
+                        <th>单价</th>
+                        <th>数量</th>
+                        <th>小计</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        let subtotal = 0;
+        order.items.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+            html += `
+                    <tr>
+                        <td>${item.dish_name}</td>
+                        <td>¥${item.price.toFixed(2)}</td>
+                        <td>${item.quantity}</td>
+                        <td>¥${itemTotal.toFixed(2)}</td>
+                    </tr>
+                `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+            <dl class="row justify-content-end">
+                <dt class="col-sm-3 text-right">商品总价：</dt>
+                <dd class="col-sm-9">¥${subtotal.toFixed(2)}</dd>
+                <dt class="col-sm-3 text-right">配送费：</dt>
+                <dd class="col-sm-9">¥${(order.delivery_fee || 0).toFixed(2)}</dd>
+                <dt class="col-sm-3 text-right">优惠金额：</dt>
+                <dd class="col-sm-9 text-success">-¥${(order.discount_amount || 0).toFixed(2)}</dd>
+                <dt class="col-sm-3 text-right">应付金额：</dt>
+                <dd class="col-sm-9">¥${order.total_amount.toFixed(2)}</dd>
+                <dt class="col-sm-3 text-right fw-bold">实付金额：</dt>
+                <dd class="col-sm-9 text-danger fw-bold">¥${(order.pay_amount || order.total_amount).toFixed(2)}</dd>
+            </dl>
+        `;
+
+        document.getElementById('orderDetailContent').innerHTML = html;
+        const orderDetailModal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+        orderDetailModal.show();
+    }
+
+    // 接单
+    function acceptOrder(orderId) {
+        if (confirm('确定要接单吗？')) {
+            fetch(`/api/merchant/orders/${orderId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: '待配送' })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('接单成功');
+                        loadOrders(); // 重新加载订单
+                    } else {
+                        alert('接单失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('接单失败：', error);
+                    alert('接单失败，请重试');
+                });
+        }
+    }
+
+    // 送达
+    function completeOrder(orderId) {
+        if (confirm('确定订单已送达吗？')) {
+            fetch(`/api/merchant/orders/${orderId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: '已送达' })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('订单已送达');
+                        loadOrders(); // 重新加载订单
+                    } else {
+                        alert('操作失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('操作失败：', error);
+                    alert('操作失败，请重试');
+                });
+        }
+    }
+
+    // 订单状态筛选
+    function filterOrders(status) {
+        // 移除所有按钮的active类
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        // 为当前点击的按钮添加active类
+        if (event && event.target) {
+            event.target.classList.add('active');
+        }
+
+        // 加载筛选后的订单数据
+        loadOrders(1, status, currentKeyword);
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 初始加载订单
+        loadOrders();
+
+        // 搜索功能
+        document.getElementById('orderSearch').addEventListener('input', function () {
+            // 延迟搜索，避免频繁请求
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(() => {
+                loadOrders(1, currentStatus, this.value);
+            }, 500);
+        });
+    });
 </script>
 {% endblock %}

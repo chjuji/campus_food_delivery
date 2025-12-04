@@ -2,20 +2,43 @@ import uuid
 from datetime import datetime
 from models.order import Order, OrderItem
 from models.cart import Cart
+from models.address import Address
+from models.merchant import Merchant
+from models.admin import Admin
 from app import db
 
-def create_order(student_id: int, merchant_id: int, address: str, pay_type: str, remark: str = '', coupon = None):
+def create_order(student_id: int, merchant_id: int, address_id: int, remark: str = '', coupon = None, cart_item_ids=None, status='待支付'):
     """从购物车创建订单"""
-    # 查询该学生在该商户的购物车商品
-    cart_items = Cart.query.filter_by(student_id=student_id).join(
-        Cart.dish
-    ).filter_by(merchant_id=merchant_id).all()
+    # 获取地址信息
+    address_obj = Address.query.get(address_id)
+    if not address_obj:
+        raise ValueError("地址不存在")
+    
+    # 构建完整地址字符串
+    address = f"{address_obj.province}{address_obj.city}{address_obj.district}{address_obj.detail_address} {address_obj.recipient} {address_obj.phone}"
+    
+    # 构建查询
+    query = Cart.query.filter_by(student_id=student_id).join(Cart.dish).filter_by(merchant_id=merchant_id)
+    
+    # 如果提供了cart_item_ids，则只查询这些ID的购物车项
+    if cart_item_ids:
+        query = query.filter(Cart.id.in_(cart_item_ids))
+    
+    # 执行查询
+    cart_items = query.all()
     
     if not cart_items:
         raise ValueError("购物车为空")
     
-    # 计算金额
-    total_amount = sum(item.dish.price * item.quantity for item in cart_items)
+    # 计算菜品总价
+    dish_total = sum(item.dish.price * item.quantity for item in cart_items)
+    
+    # 获取配送费（从Admin表获取）
+    admin_config = Admin.get_config()
+    delivery_fee = admin_config.delivery_fee
+    
+    # 计算总金额（菜品总价 + 配送费）
+    total_amount = dish_total + delivery_fee
     pay_amount = total_amount
     
     # 应用优惠券
@@ -45,8 +68,8 @@ def create_order(student_id: int, merchant_id: int, address: str, pay_type: str,
             merchant_id=merchant_id,
             total_amount=total_amount,
             pay_amount=pay_amount,
-            pay_type=pay_type,
-            status='待接单',
+            # delivery_fee=delivery_fee,
+            status=status,
             address=address,
             remark=remark,
             coupon_id=coupon.id if coupon else None,
@@ -66,6 +89,17 @@ def create_order(student_id: int, merchant_id: int, address: str, pay_type: str,
         db.session.add(order_item)
         # 清空购物车
         db.session.delete(item)
+    
+    # 如果订单状态不是待支付，说明已经支付，需要给商户钱包加钱
+    if status != '待支付':
+        # 获取对应商户
+        merchant = Merchant.query.get(merchant_id)
+        if merchant:
+            # 给商户钱包加上对应菜品的价值（实付金额）
+            old_balance = float(merchant.wallet)
+            merchant.wallet = old_balance + float(pay_amount)
+            new_balance = float(merchant.wallet)
+            print(f"订单创建时，商户 {merchant.merchant_name} 钱包金额增加：{pay_amount}，原余额：{old_balance}，新余额：{new_balance}")
     
     db.session.commit()
     return order

@@ -12,8 +12,8 @@ class Order(db.Model):
     pay_amount = db.Column(db.Float, nullable=False, comment='实付金额')
     coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id'), nullable=True, comment='优惠券ID')
     discount_amount = db.Column(db.Float, default=0, nullable=False, comment='优惠金额')
-    pay_type = db.Column(db.String(20), nullable=False, comment='支付方式')
-    status = db.Column(db.String(20), nullable=False, comment='状态：待接单/待配送/已完成/已取消')
+
+    status = db.Column(db.String(20), nullable=False, comment='状态：待支付/已支付/待接单/待配送/已完成/已取消')
     address = db.Column(db.String(255), nullable=False, comment='收货地址')
     remark = db.Column(db.Text, comment='备注')
     create_time = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
@@ -38,7 +38,7 @@ class Order(db.Model):
             'pay_amount': self.pay_amount,
             'coupon_id': self.coupon_id,
             'discount_amount': self.discount_amount,
-            'pay_type': self.pay_type,
+
             'status': self.status,
             'address': self.address,
             'remark': self.remark,

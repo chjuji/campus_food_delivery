@@ -3,21 +3,21 @@
 {% block title %}个人资料 - 商户后台{% endblock %}
 
 {% block sidebar %}
-    <a class="nav-link" href="/merchant/index">
-        <i class="fas fa-tachometer-alt"></i> 控制台
-    </a>
-    <a class="nav-link" href="/merchant/orders">
-        <i class="fas fa-shopping-bag"></i> 订单管理
-    </a>
-    <a class="nav-link" href="/merchant/dishes">
-        <i class="fas fa-utensils"></i> 菜品管理
-    </a>
-    <a class="nav-link" href="/merchant/statistics">
-        <i class="fas fa-chart-bar"></i> 经营统计
-    </a>
-    <a class="nav-link" href="/merchant/settings">
-        <i class="fas fa-cog"></i> 商铺设置
-    </a>
+<a class="nav-link" href="/merchant/index">
+    <i class="fas fa-tachometer-alt"></i> 控制台
+</a>
+<a class="nav-link" href="/merchant/orders">
+    <i class="fas fa-shopping-bag"></i> 订单管理
+</a>
+<a class="nav-link" href="/merchant/dishes">
+    <i class="fas fa-utensils"></i> 菜品管理
+</a>
+<a class="nav-link" href="/merchant/statistics">
+    <i class="fas fa-chart-bar"></i> 经营统计
+</a>
+<a class="nav-link" href="/merchant/settings">
+    <i class="fas fa-cog"></i> 商铺设置
+</a>
 {% endblock %}
 
 {% block header %}个人资料{% endblock %}
@@ -36,43 +36,58 @@
             <div class="form-group row mb-3">
                 <label for="merchantName" class="col-sm-2 col-form-label">店铺名称</label>
                 <div class="col-sm-10">
-                    <input type="text" name="merchant_name" class="form-control" id="merchantName" value="{{ merchant_info.merchant_name|default('') }}" placeholder="请输入店铺名称">
+                    <input type="text" name="merchant_name" class="form-control" id="merchantName"
+                        value="{{ merchant_info.merchant_name|default('') }}" placeholder="请输入店铺名称">
                 </div>
             </div>
             <div class="form-group row mb-3">
                 <label for="contactName" class="col-sm-2 col-form-label">联系人姓名</label>
                 <div class="col-sm-10">
-                    <input type="text" name="contact_name" class="form-control" id="contactName" value="{{ merchant_info.contact_name|default('') }}" placeholder="请输入联系人姓名">
+                    <input type="text" name="contact_name" class="form-control" id="contactName"
+                        value="{{ merchant_info.contact_name|default('') }}" placeholder="请输入联系人姓名">
                 </div>
             </div>
             <div class="form-group row mb-3">
                 <label for="contactPhone" class="col-sm-2 col-form-label">手机号码</label>
                 <div class="col-sm-10">
-                    <input type="tel" name="contact_phone" class="form-control" id="contactPhone" value="{{ merchant_info.contact_phone|default('') }}" placeholder="请输入手机号码">
+                    <input type="tel" name="contact_phone" class="form-control" id="contactPhone"
+                        value="{{ merchant_info.contact_phone|default('') }}" placeholder="请输入手机号码">
                 </div>
             </div>
             <div class="form-group row mb-3">
                 <label for="address" class="col-sm-2 col-form-label">店铺地址</label>
                 <div class="col-sm-10">
-                    <textarea name="address" class="form-control" id="address" rows="3" placeholder="请输入店铺地址">{{ merchant_info.address|default('') }}</textarea>
+                    <textarea name="address" class="form-control" id="address" rows="3"
+                        placeholder="请输入店铺地址">{{ merchant_info.address|default('') }}</textarea>
                 </div>
             </div>
             <div class="form-group row mb-3">
                 <label for="status" class="col-sm-2 col-form-label">店铺状态</label>
                 <div class="col-sm-10">
-                    <input type="text" class="form-control" id="status" value="{{ ['待审核', '已通过', '已下架'][merchant_info.status|default(0)] }}" disabled>
+                    <input type="text" class="form-control" id="status"
+                        value="{{ ['待审核', '已通过', '已下架'][merchant_info.status|default(0)] }}" disabled>
                 </div>
             </div>
             <div class="form-group row mb-3">
                 <label for="createTime" class="col-sm-2 col-form-label">注册时间</label>
                 <div class="col-sm-10">
-                    <input type="text" class="form-control" id="createTime" value="{{ merchant_info.create_time.strftime('%Y-%m-%d %H:%M:%S') if merchant_info.create_time else '' }}" disabled>
+                    <input type="text" class="form-control" id="createTime"
+                        value="{{ merchant_info.create_time.strftime('%Y-%m-%d %H:%M:%S') if merchant_info.create_time else '' }}"
+                        disabled>
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label for="wallet" class="col-sm-2 col-form-label">钱包余额</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="wallet"
+                        value="¥{{ merchant_info.wallet|default(0.00)|round(2) }}" disabled>
                 </div>
             </div>
             <div class="form-group row">
                 <div class="col-sm-10 offset-sm-2">
                     <button type="submit" class="btn btn-primary mr-2">保存信息</button>
-                    <a href="#" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">修改密码</a>
+                    <a href="#" class="btn btn-secondary" data-bs-toggle="modal"
+                        data-bs-target="#changePasswordModal">修改密码</a>
                 </div>
             </div>
         </form>
@@ -80,7 +95,8 @@
 </div>
 
 <!-- // 修改密码模态框 -->
-<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -147,119 +163,119 @@
 </div> -->
 
 <script>
-// 页面加载完成后，获取并填充个人资料数据
-window.onload = function() {
-    // 加载商户信息
-    fetch('/api/merchant/profile')
-        .then(response => response.json())
-        .then(data => {
-            if (data.code === 200) {
-                document.getElementById('merchantName').value = data.data.merchant_name || '';
-                document.getElementById('contactName').value = data.data.contact_name || '';
-                document.getElementById('contactPhone').value = data.data.contact_phone || '';
-                document.getElementById('address').value = data.data.address || '';
-            } else {
+    // 页面加载完成后，获取并填充个人资料数据
+    window.onload = function () {
+        // 加载商户信息
+        fetch('/api/merchant/profile')
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    document.getElementById('merchantName').value = data.data.merchant_name || '';
+                    document.getElementById('contactName').value = data.data.contact_name || '';
+                    document.getElementById('contactPhone').value = data.data.contact_phone || '';
+                    document.getElementById('address').value = data.data.address || '';
+                } else {
+                    alert('加载商户信息失败');
+                }
+            })
+            .catch(error => {
+                console.error('加载商户信息失败:', error);
                 alert('加载商户信息失败');
-            }
-        })
-        .catch(error => {
-            console.error('加载商户信息失败:', error);
-            alert('加载商户信息失败');
-        });
+            });
 
-    // 表单提交事件
-    document.getElementById('profileForm').onsubmit = function(e) {
-        e.preventDefault();
-        
-        // 收集表单数据
-        const formData = {
-            merchant_name: document.getElementById('merchantName').value,
-            contact_name: document.getElementById('contactName').value,
-            contact_phone: document.getElementById('contactPhone').value,
-            address: document.getElementById('address').value
+        // 表单提交事件
+        document.getElementById('profileForm').onsubmit = function (e) {
+            e.preventDefault();
+
+            // 收集表单数据
+            const formData = {
+                merchant_name: document.getElementById('merchantName').value,
+                contact_name: document.getElementById('contactName').value,
+                contact_phone: document.getElementById('contactPhone').value,
+                address: document.getElementById('address').value
+            };
+
+            // 发送更新请求到后端API
+            fetch('/api/merchant/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success || data.code === 200) {
+                        alert('个人信息已保存');
+                        location.reload();
+                    } else {
+                        alert('保存失败：' + (data.message || data.msg || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('更新失败:', error);
+                    alert('保存失败，请稍后重试');
+                });
         };
-        
-        // 发送更新请求到后端API
-        fetch('/api/merchant/profile', {
+    };
+
+    function changePassword() {
+        // 获取表单数据
+        const currentPassword = document.getElementById('currentPassword').value.trim();
+        const newPassword = document.getElementById('newPassword').value.trim();
+        const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+        // 验证非空
+        if (!currentPassword) {
+            alert('请输入当前密码');
+            document.getElementById('currentPassword').focus();
+            return;
+        }
+
+        if (!newPassword) {
+            alert('请输入新密码');
+            document.getElementById('newPassword').focus();
+            return;
+        }
+
+        if (!confirmPassword) {
+            alert('请确认新密码');
+            document.getElementById('confirmPassword').focus();
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert('两次输入的新密码不一致');
+            return;
+        }
+
+        // 发送修改密码请求
+        fetch('/api/merchant/set_password', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify({
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success || data.code === 200) {
-                alert('个人信息已保存');
-                location.reload();
-            } else {
-                alert('保存失败：' + (data.message || data.msg || '未知错误'));
-            }
-        })
-        .catch(error => {
-            console.error('更新失败:', error);
-            alert('保存失败，请稍后重试');
-        });
-    };
-};
-
-function changePassword() {
-    // 获取表单数据
-    const currentPassword = document.getElementById('currentPassword').value.trim();
-    const newPassword = document.getElementById('newPassword').value.trim();
-    const confirmPassword = document.getElementById('confirmPassword').value.trim();
-    
-    // 验证非空
-    if (!currentPassword) {
-        alert('请输入当前密码');
-        document.getElementById('currentPassword').focus();
-        return;
+            .then(response => response.json())
+            .then(data => {
+                if (data.success || data.code === 200) {
+                    alert('密码修改成功');
+                    // 关闭模态框
+                    bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                    // 重置表单
+                    document.getElementById('changePasswordForm').reset();
+                } else {
+                    alert('修改失败：' + (data.message || data.msg || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('修改密码失败:', error);
+                alert('网络错误，请稍后重试');
+            });
     }
-    
-    if (!newPassword) {
-        alert('请输入新密码');
-        document.getElementById('newPassword').focus();
-        return;
-    }
-    
-    if (!confirmPassword) {
-        alert('请确认新密码');
-        document.getElementById('confirmPassword').focus();
-        return;
-    }
-    
-    if (newPassword !== confirmPassword) {
-        alert('两次输入的新密码不一致');
-        return;
-    }
-    
-    // 发送修改密码请求
-    fetch('/api/merchant/set_password', {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            currentPassword: currentPassword,
-            newPassword: newPassword
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success || data.code === 200) {
-            alert('密码修改成功');
-            // 关闭模态框
-            bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
-            // 重置表单
-            document.getElementById('changePasswordForm').reset();
-        } else {
-            alert('修改失败：' + (data.message || data.msg || '未知错误'));
-        }
-    })
-    .catch(error => {
-        console.error('修改密码失败:', error);
-        alert('网络错误，请稍后重试');
-    });
-}
 </script>
 {% endblock %}

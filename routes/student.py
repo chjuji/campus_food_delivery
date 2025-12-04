@@ -1,12 +1,14 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.student import Student
+from models.merchant import Merchant
 from models.cart import Cart
 from models.dish import Dish
 from models.coupon import Coupon, UserCoupon
-from models.order import Order
+from models.order import Order, OrderItem
 from models.complaint import Complaint
 from models.address import Address
+from models.admin import Admin
 import re
 from datetime import datetime
 from services.auth_service import student_register, student_login
@@ -44,6 +46,10 @@ def api_login_required(f):
     return decorated_function
 
 student_bp = Blueprint('student', __name__)
+
+# 辅助函数：验证支付密码是否为6位数字
+def validate_pay_password(pay_password):
+    return bool(re.match(r'^\d{6}$', pay_password))
 
 # 注册
 @student_bp.post('/register')  # 对应前端请求的/api/student/register
@@ -391,6 +397,234 @@ def add_address():
         db.session.rollback()
         print(f'添加地址错误：{str(e)}')
         return jsonify({'code': 500, 'msg': '添加地址失败：服务器内部错误'}), 500
+
+# 检查支付密码状态
+@student_bp.get('/check-pay-password')
+@api_login_required
+def check_pay_password_status():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        has_pay_password = student.pay_password is not None
+        
+        return jsonify({
+            'code': 200,
+            'data': {
+                'has_pay_password': has_pay_password
+            }
+        })
+    except Exception as e:
+        print(f'检查支付密码状态错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '检查支付密码状态失败：服务器内部错误'}), 500
+
+# 设置初始支付密码
+@student_bp.post('/set-pay-password')
+@api_login_required
+def set_pay_password():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        # 检查是否已经设置了支付密码
+        if student.pay_password:
+            return jsonify({'code': 400, 'msg': '支付密码已设置，请直接修改'}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
+        
+        pay_password = data.get('pay_password')
+        login_password = data.get('login_password')
+        
+        # 验证输入
+        if not pay_password or not login_password:
+            return jsonify({'code': 400, 'msg': '请输入支付密码和登录密码'}), 400
+        
+        # 验证支付密码格式
+        if not validate_pay_password(pay_password):
+            return jsonify({'code': 400, 'msg': '支付密码必须为6位数字'}), 400
+        
+        # 验证登录密码
+        if not bcrypt.checkpw(login_password.encode('utf-8'), student.password.encode('utf-8')):
+            return jsonify({
+                'code': 400, 
+                'msg': '登录密码错误',
+                'data': {'error_type': 'login_password'}
+            }), 400
+        
+        # 加密支付密码并保存
+        hashed_pay_password = bcrypt.hashpw(pay_password.encode('utf-8'), bcrypt.gensalt())
+        student.pay_password = hashed_pay_password.decode('utf-8')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '支付密码设置成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'设置支付密码错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '设置支付密码失败：服务器内部错误'}), 500
+
+# 修改支付密码
+@student_bp.post('/change-pay-password')
+@api_login_required
+def change_pay_password():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        # 检查是否已设置支付密码
+        if not student.pay_password:
+            return jsonify({'code': 400, 'msg': '请先设置支付密码'}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
+        
+        old_pay_password = data.get('old_pay_password')
+        new_pay_password = data.get('new_pay_password')
+        
+        # 验证输入
+        if not old_pay_password or not new_pay_password:
+            return jsonify({'code': 400, 'msg': '请输入原支付密码和新支付密码'}), 400
+        
+        # 验证原支付密码
+        if not bcrypt.checkpw(old_pay_password.encode('utf-8'), student.pay_password.encode('utf-8')):
+            return jsonify({
+                'code': 400,
+                'msg': '原支付密码错误',
+                'data': {'error_type': 'old_pay_password'}
+            }), 400
+        
+        # 验证新支付密码格式
+        if not validate_pay_password(new_pay_password):
+            return jsonify({'code': 400, 'msg': '新支付密码必须为6位数字'}), 400
+        
+        # 加密并更新支付密码
+        hashed_pay_password = bcrypt.hashpw(new_pay_password.encode('utf-8'), bcrypt.gensalt())
+        student.pay_password = hashed_pay_password.decode('utf-8')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '支付密码修改成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'修改支付密码错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '修改支付密码失败：服务器内部错误'}), 500
+
+# 钱包充值
+@student_bp.post('/wallet/recharge')
+@api_login_required
+def wallet_recharge():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
+        
+        # 获取充值金额
+        recharge_amount = data.get('amount')
+        if recharge_amount is None:
+            return jsonify({'code': 400, 'msg': '请输入有效的充值金额'}), 400
+        
+        # 验证充值金额上限
+        if recharge_amount > 10000:
+            return jsonify({'code': 400, 'msg': '单次充值金额不能超过10000元'}), 400
+        
+        # 更新钱包余额
+        student.wallet = float(student.wallet) + recharge_amount
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '充值成功',
+            'data': {
+                'new_balance': float(student.wallet)
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'钱包充值错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '充值失败：服务器内部错误'}), 500
+
+# 钱包支付验证
+@student_bp.post('/wallet/pay')
+@api_login_required
+def wallet_pay():
+    try:
+        user_id = session['student_id']
+        student = Student.query.get(user_id)
+        if not student:
+            return jsonify({'code': 404, 'msg': '用户不存在'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
+        
+        # 获取支付密码和金额
+        password = data.get('password')
+        amount = data.get('amount')
+        
+        if not password or amount is None:
+            return jsonify({'code': 400, 'msg': '请输入支付密码和金额'}), 400
+        
+        # 验证支付密码格式（6位数字）
+        if not validate_pay_password(password):
+            return jsonify({'code': 400, 'msg': '支付密码必须为6位数字'}), 400
+        
+        # 验证支付密码
+        if not bcrypt.checkpw(password.encode('utf-8'), student.pay_password.encode('utf-8')):
+            return jsonify({'code': 400, 'msg': '支付密码错误'}), 400
+        
+        # 检查钱包余额
+        if float(student.wallet) < amount:
+            return jsonify({'code': 400, 'msg': '钱包余额不足'}), 400
+        
+        # 扣除钱包金额
+        student.wallet = float(student.wallet) - amount
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '支付成功',
+            'data': {
+                'new_balance': float(student.wallet)
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'钱包支付错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '支付失败：服务器内部错误'}), 500
+
+# 获取配送费
+@student_bp.route('/delivery-fee', methods=['GET'])
+def get_delivery_fee():
+    """获取配送费"""
+    try:
+        # 从Admin表获取配送费
+        admin_config = Admin.get_config()
+        delivery_fee = float(admin_config.delivery_fee)
+        return jsonify({'code': 200, 'data': {'delivery_fee': delivery_fee}})
+    except Exception as e:
+        print(f'获取配送费错误：{str(e)}')
+        # 如果出错，返回默认配送费5元
+        return jsonify({'code': 200, 'data': {'delivery_fee': 5.0}})
 
 # 更新地址
 @student_bp.put('/addresses/<int:address_id>')
@@ -776,6 +1010,66 @@ def get_user_coupon_count():
         return jsonify({'code': 500, 'msg': f'获取优惠券数量失败：{str(e)}'}), 500
 
 # 创建订单
+@student_bp.get('/orders/<int:order_id>')
+@api_login_required
+def get_student_order_detail(order_id):
+    try:
+        # 获取当前登录学生ID
+        student_id = session.get('student_id')
+        if not student_id:
+            return jsonify({'code': 401, 'msg': '未登录或会话已过期'}), 401
+        
+        # 查找订单
+        order = Order.query.filter_by(id=order_id, student_id=student_id).options(
+            db.joinedload(Order.merchant),
+            db.joinedload(Order.order_items).joinedload(OrderItem.dish)
+        ).first()
+        
+        if not order:
+            return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        
+        # 从Admin表获取配送费
+        admin_config = Admin.get_config()
+        delivery_fee = float(admin_config.delivery_fee)
+        
+        # 构建响应数据
+        order_data = {
+            'order_id': order.id,
+            'order_no': order.order_no,
+            'status': order.status,
+            'created_at': order.create_time.isoformat() if order.create_time else None,
+            'pay_time': order.pay_time.isoformat() if order.pay_time else None,
+            'finish_time': order.finish_time.isoformat() if order.finish_time else None,
+            'total_amount': order.total_amount,
+            'pay_amount': order.pay_amount,
+            'discount_amount': order.discount_amount,
+            'address': order.address,
+            'remark': order.remark,
+            'delivery_fee': delivery_fee,  # 从Admin表获取配送费
+            'merchant': {
+                'name': order.merchant.merchant_name if order.merchant else '未知商户'
+            },
+            'items': []
+        }
+        
+        # 构建订单项
+        for item in order.order_items:
+            item_data = {
+                'dish_name': item.dish.dish_name if item.dish else '未知菜品',
+                'price': item.price,
+                'quantity': item.quantity
+            }
+            order_data['items'].append(item_data)
+        
+        return jsonify({
+            'code': 200,
+            'msg': '获取订单详情成功',
+            'data': order_data
+        })
+    except Exception as e:
+        print(f"订单详情API错误：{str(e)}")
+        return jsonify({'code': 500, 'msg': f'获取订单详情失败：{str(e)}'}), 500
+
 @student_bp.get('/orders')
 @api_login_required
 def get_student_orders():
@@ -790,12 +1084,24 @@ def get_student_orders():
         page = request.args.get('page', 1, type=int)
         page_size = request.args.get('page_size', 10, type=int)
         
-        # 构建查询
-        query = Order.query.filter_by(student_id=student_id)
+        # 构建查询，关联查询商户信息
+        query = Order.query.filter_by(student_id=student_id).options(
+            db.joinedload(Order.merchant)
+        )
         
-        # 根据状态筛选
+            # 根据状态筛选
         if status != 'all':
-            query = query.filter_by(status=status)
+            # 状态值映射，将前端英文状态转换为数据库中文状态
+            status_map = {
+                'pending': '待支付',
+                'preparing': '待接单',
+                'delivering': '待配送', # 数据库中存的是待配送
+                'delivered': '已送达',
+                'cancelled': '已取消'
+            }
+            # 使用映射后的状态值，如果没有映射则使用原始值
+            db_status = status_map.get(status, status)
+            query = query.filter_by(status=db_status)
         
         # 按创建时间倒序排序
         query = query.order_by(Order.create_time.desc())
@@ -803,19 +1109,29 @@ def get_student_orders():
         # 分页
         pagination = query.paginate(page=page, per_page=page_size, error_out=False)
         
+        # 从Admin表获取配送费（只获取一次，提高性能）
+        admin_config = Admin.get_config()
+        delivery_fee = float(admin_config.delivery_fee)
+        
         # 构建响应数据
         orders_data = []
         for order in pagination.items:
             # 构建符合前端期望的订单数据结构
             order_data = {
                 'order_id': order.id,  # 前端期望的字段名
+                'order_no': order.order_no,
                 'status': order.status,
                 'created_at': order.create_time.isoformat() if order.create_time else None,
+                'pay_time': order.pay_time.isoformat() if order.pay_time else None,
+                'finish_time': order.finish_time.isoformat() if order.finish_time else None,
                 'total_amount': order.total_amount,
+                'pay_amount': order.pay_amount,
+                'discount_amount': order.discount_amount,
                 'address': order.address,
-                'delivery_fee': 0,  # 假设配送费为0，根据实际情况调整
+                'remark': order.remark,
+                'delivery_fee': delivery_fee,  # 从Admin表获取配送费
                 'merchant': {
-                    'name': '未知商户'  # 这里需要关联查询merchant信息
+                    'name': order.merchant.merchant_name if order.merchant else '未知商户'
                 },
                 'items': []  # 前端期望的订单项数组名
             }
@@ -853,18 +1169,15 @@ def create_student_order():
     
     data = request.get_json()
     merchant_id = data.get('merchant_id')
-    address = data.get('address')
-    pay_type = data.get('pay_type', 'wechat')
+    address_id = data.get('address_id')
     coupon_id = data.get('coupon_id')
     remark = data.get('remark', '')
+    cart_item_ids = data.get('cart_item_ids', [])
+    status = data.get('status', '待支付')
     
     # 验证必填参数
-    if not merchant_id or not address:
-        return jsonify({'code': 400, 'msg': '缺少商户ID或地址'}), 400
-    
-    # 验证支付方式
-    if pay_type not in ['wechat', 'alipay']:
-        return jsonify({'code': 400, 'msg': '不支持的支付方式'}), 400
+    if not merchant_id or not address_id:
+        return jsonify({'code': 400, 'msg': '缺少商户ID或地址ID'}), 400
     
     # 验证优惠券是否有效
     valid_coupon = None
@@ -890,10 +1203,11 @@ def create_student_order():
         order = create_order(
             student_id=identity['id'],
             merchant_id=merchant_id,
-            address=address,
-            pay_type=pay_type,
+            address_id=address_id,
             remark=remark,
-            coupon=valid_coupon
+            coupon=valid_coupon,
+            cart_item_ids=cart_item_ids,
+            status=status
         )
         
         # 注意：create_order函数中已经处理了购物车清空逻辑
@@ -922,6 +1236,98 @@ def create_student_order():
     except Exception as e:
         db.session.rollback()
         return jsonify({'code': 500, 'msg': f'创建订单失败：{str(e)}'}), 500
+
+# 取消订单
+@student_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
+@api_login_required
+def cancel_order(order_id):
+    try:
+        # 获取用户ID
+        if 'student_id' in session:
+            user_id = session['student_id']
+        else:
+            # 尝试从JWT中获取
+            current_user = get_jwt_identity()
+            if isinstance(current_user, str) and ':' in current_user:
+                user_type, user_id = current_user.split(':')
+                if user_type != 'student':
+                    return jsonify({'code': 403, 'msg': '权限错误'}), 403
+                user_id = int(user_id)
+            else:
+                return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+        # 查找订单
+        order = Order.query.filter_by(id=order_id, student_id=user_id).first()
+        if not order:
+            return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        
+        # 如果订单状态是待接单，需要退款
+        if order.status == '待接单':
+            # 获取学生和商户信息
+            student = Student.query.get(user_id)
+            merchant = Merchant.query.get(order.merchant_id)
+            
+            if not student or not merchant:
+                return jsonify({'code': 404, 'msg': '用户或商户不存在'}), 404
+            
+            # 获取订单支付金额并转换为Decimal类型
+            from decimal import Decimal
+            refund_amount = Decimal(str(order.pay_amount))
+            
+            # 从商户钱包扣除金额
+            merchant.wallet -= refund_amount
+            if merchant.wallet < 0:
+                return jsonify({'code': 500, 'msg': '商户钱包余额不足，无法退款'}), 500
+            
+            # 将金额退还给学生
+            student.wallet += refund_amount
+        
+        # 将订单状态改为已取消
+        order.status = '已取消'
+        db.session.commit()
+        
+        return jsonify({'code': 200, 'msg': '订单已取消'})
+    except Exception as e:
+        db.session.rollback()
+        print(f'取消订单错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '取消订单失败：服务器内部错误'}), 500
+
+# 删除订单
+@student_bp.route('/orders/<int:order_id>/delete', methods=['DELETE'])
+@api_login_required
+def delete_order(order_id):
+    try:
+        # 获取用户ID
+        if 'student_id' in session:
+            user_id = session['student_id']
+        else:
+            # 尝试从JWT中获取
+            current_user = get_jwt_identity()
+            if isinstance(current_user, str) and ':' in current_user:
+                user_type, user_id = current_user.split(':')
+                if user_type != 'student':
+                    return jsonify({'code': 403, 'msg': '权限错误'}), 403
+                user_id = int(user_id)
+            else:
+                return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+        # 查找订单
+        order = Order.query.filter_by(id=order_id, student_id=user_id).first()
+        if not order:
+            return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        
+        # 删除关联的订单项
+        OrderItem.query.filter_by(order_id=order_id).delete()
+        
+        # 删除订单
+        db.session.delete(order)
+        db.session.commit()
+        
+        return jsonify({'code': 200, 'msg': '订单已删除'})
+    except Exception as e:
+        db.session.rollback()
+        print(f'删除订单错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '删除订单失败：服务器内部错误'}), 500
 
 # 获取投诉列表
 @student_bp.route('/complaints', methods=['GET'])
@@ -1118,3 +1524,11 @@ def delete_complaint(complaint_id):
         db.session.rollback()
         print(f'删除投诉错误：{str(e)}')
         return jsonify({'code': 500, 'msg': '删除投诉失败：服务器内部错误'}), 500
+
+# 登出
+@student_bp.post('/logout')
+def logout():
+    session.pop('student_id', None)
+    return jsonify({'code': 200, 'msg': '登出成功'})
+
+

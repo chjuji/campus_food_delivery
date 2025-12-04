@@ -5,170 +5,250 @@
 {% block sidebar_title %}学生中心{% endblock %}
 
 {% block sidebar_menu %}
-    <li><a href="/student/index">首页</a></li>
-    <li><a href="/student/cart">购物车</a></li>
-    <li><a href="/student/orders" class="active">我的订单</a></li>
-    <li><a href="/student/profile">个人信息</a></li>
-    <li><a href="/student/complaints">我的投诉</a></li>
+<li><a href="/student/index">首页</a></li>
+<li><a href="/student/cart">购物车</a></li>
+<li><a href="/student/orders" class="active">我的订单</a></li>
+<li><a href="/student/profile">个人信息</a></li>
+<li><a href="/student/complaints">我的投诉</a></li>
 {% endblock %}
 
 {% block content %}
-    <div class="card">
-        <div class="card-header">
-            <h5>我的订单</h5>
+<div class="card">
+    <div class="card-header">
+        <h5>我的订单</h5>
+    </div>
+    <div class="card-body">
+        <!-- 订单状态筛选 -->
+        <div class="mb-4">
+            <div class="btn-group" role="group" aria-label="订单状态筛选">
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('all')">全部订单</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('pending')">待支付</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('preparing')">待接单</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('delivering')">配送中</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('delivered')">已送达</button>
+                <button type="button" class="btn btn-outline-primary" onclick="filterOrders('cancelled')">已取消</button>
+            </div>
         </div>
-        <div class="card-body">
-            <!-- 订单状态筛选 -->
-            <div class="mb-4">
-                <div class="btn-group" role="group" aria-label="订单状态筛选">
-                    <button type="button" class="btn btn-outline-primary" onclick="filterOrders('all')">全部订单</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="filterOrders('pending')">待支付</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="filterOrders('paid')">已支付</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="filterOrders('delivering')">配送中</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="filterOrders('delivered')">已送达</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="filterOrders('cancelled')">已取消</button>
-                </div>
-            </div>
 
-            <!-- 订单列表 -->
-            <div id="orderList" class="mb-4">
-                <div class="text-center text-muted">暂无订单</div>
-            </div>
+        <!-- 订单列表 -->
+        <div id="orderList" class="mb-4">
+            <div class="text-center text-muted">暂无订单</div>
+        </div>
 
-            <!-- 分页控件 -->
-            <nav id="pagination" class="mt-4" aria-label="分页">
-            </nav>
+        <!-- 分页控件 -->
+        <nav id="pagination" class="mt-4" aria-label="分页">
+        </nav>
+    </div>
+</div>
+
+<!-- 订单详情模态框 -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderDetailModalLabel">订单详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body" id="orderDetailContent">
+                <!-- 订单详情内容将通过JavaScript动态填充 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- 订单详情模态框 -->
-    <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="orderDetailModalLabel">订单详情</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+<!-- 支付密码悬浮框 -->
+<div class="modal fade" id="paymentPasswordModal" tabindex="-1" aria-labelledby="paymentPasswordModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentPasswordModalLabel">输入支付密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"
+                    onclick="cancelPasswordPayment()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">支付金额</label>
+                    <div class="text-danger fs-4 font-bold" id="paymentAmount">¥0.00</div>
                 </div>
-                <div class="modal-body" id="orderDetailContent">
-                    <!-- 订单详情内容将通过JavaScript动态填充 -->
+                <div class="mb-4">
+                    <label for="payPassword" class="form-label">请输入6位支付密码</label>
+                    <input type="password" class="form-control" id="payPassword" placeholder="请输入支付密码" maxlength="6"
+                        pattern="\d{6}" inputmode="numeric">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                </div>
+                <div id="passwordError" class="alert alert-danger d-none">支付密码错误，请重新输入</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cancelPasswordPayment()">取消支付</button>
+                <button type="button" class="btn btn-primary" onclick="verifyPaymentPassword()">确认支付</button>
             </div>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-    <style>
-        .order-item {
-            margin-bottom: 20px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            overflow: hidden;
+<style>
+    .order-item {
+        margin-bottom: 20px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .order-header {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .order-body {
+        padding: 15px;
+    }
+
+    .dish-item {
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #eee;
+    }
+
+    .dish-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .order-footer {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        text-align: right;
+        border-top: 1px solid #eee;
+    }
+
+    .status-badge {
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+
+    /* 支付密码悬浮框样式 */
+    #paymentPasswordModal .modal-dialog {
+        max-width: 400px;
+        margin: 1.75rem auto;
+    }
+
+    #paymentPasswordModal .modal-header {
+        background-color: #fff;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    #paymentPasswordModal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    #paymentPasswordModal .modal-body {
+        padding: 20px;
+    }
+
+    #paymentPasswordModal .form-label {
+        font-weight: 500;
+        color: #333;
+    }
+
+    #paymentAmount {
+        letter-spacing: 0.5px;
+    }
+
+    #payPassword {
+        font-size: 16px;
+        text-align: center;
+        letter-spacing: 5px;
+    }
+
+    #passwordError {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+</style>
+<script>
+    // 当前筛选状态
+    let currentStatus = 'all';
+    let currentPage = 1;
+    // 当前支付的订单ID
+    let currentPayingOrderId = null;
+    let currentPayingAmount = 0;
+
+    // 页面加载时检查登录状态
+    $(function () {
+        const token = localStorage.getItem('student_token');
+        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        if (!token) {
+            window.location.href = '/student/login';
+            return;
         }
-        .order-header {
-            background-color: #f8f9fa;
-            padding: 10px 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .order-body {
-            padding: 15px;
-        }
-        .dish-item {
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px dashed #eee;
-        }
-        .dish-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        .order-footer {
-            background-color: #f8f9fa;
-            padding: 10px 15px;
-            text-align: right;
-            border-top: 1px solid #eee;
-        }
-        .status-badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-    </style>
-    <script>
-        // 当前筛选状态
-        let currentStatus = 'all';
-        let currentPage = 1;
-        
-        // 页面加载时检查登录状态
-        $(function () {
-            const token = localStorage.getItem('student_token');
-            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            if (!token) {
-                window.location.href = '/student/login';
-                return;
+        $('#userName').text(userInfo.name);
+
+        // 设置当前菜单激活状态
+        const currentPath = window.location.pathname;
+        $('.sidebar-menu a').each(function () {
+            if ($(this).attr('href') === currentPath) {
+                $(this).addClass('active');
+            } else {
+                $(this).removeClass('active');
             }
-            $('#userName').text(userInfo.name);
-            
-            // 设置当前菜单激活状态
-            const currentPath = window.location.pathname;
-            $('.sidebar-menu a').each(function() {
-                if ($(this).attr('href') === currentPath) {
-                    $(this).addClass('active');
-                } else {
-                    $(this).removeClass('active');
-                }
-            });
-            
-            // 加载订单列表
-            loadOrders();
         });
 
         // 加载订单列表
-        function loadOrders() {
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: '/api/student/orders',
-                type: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` },
-                data: {
-                    status: currentStatus,
-                    page: currentPage,
-                    page_size: 10
-                },
-                success: function (res) {
-                    if (res.code === 200) {
-                        renderOrders(res.data);
-                    } else {
-                        alert('获取订单失败：' + res.msg);
-                    }
+        loadOrders();
+    });
+
+    // 加载订单列表
+    function loadOrders() {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: '/api/student/orders',
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            data: {
+                status: currentStatus,
+                page: currentPage,
+                page_size: 10
+            },
+            success: function (res) {
+                if (res.code === 200) {
+                    renderOrders(res.data);
+                } else {
+                    alert('获取订单失败：' + res.msg);
                 }
-            });
+            }
+        });
+    }
+
+    // 渲染订单列表
+    function renderOrders(orderData) {
+        const orders = orderData.items;
+        const total = orderData.total;
+        const pageSize = orderData.page_size;
+        const totalPages = Math.ceil(total / pageSize);
+
+        if (orders.length === 0) {
+            $('#orderList').html('\u003cdiv class="text-center text-muted"\u003e暂无订单\u003c/div\u003e');
+            $('#pagination').html('');
+            return;
         }
 
-        // 渲染订单列表
-        function renderOrders(orderData) {
-            const orders = orderData.items;
-            const total = orderData.total;
-            const pageSize = orderData.page_size;
-            const totalPages = Math.ceil(total / pageSize);
-            
-            if (orders.length === 0) {
-                $('#orderList').html('\u003cdiv class="text-center text-muted"\u003e暂无订单\u003c/div\u003e');
-                $('#pagination').html('');
-                return;
-            }
+        let html = '';
 
-            let html = '';
-            
-            orders.forEach(order => {
-                // 获取状态文本和样式
-                const statusInfo = getStatusInfo(order.status);
-                
-                html += `
+        orders.forEach(order => {
+            // 获取状态文本和样式
+            const statusInfo = getStatusInfo(order.status);
+
+            html += `
                     \u003cdiv class="order-item"\u003e
                         \u003cdiv class="order-header d-flex justify-content-between align-items-center"\u003e
                             \u003cspan\u003e订单号：${order.order_id}\u003c/span\u003e
@@ -177,10 +257,10 @@
                         \u003cdiv class="order-body"\u003e
                             \u003cdiv class="mb-2"\u003e商户：${order.merchant.name}\u003c/div\u003e
                 `;
-                
-                // 订单商品列表
-                order.items.forEach(item => {
-                    html += `
+
+            // 订单商品列表
+            order.items.forEach(item => {
+                html += `
                         \u003cdiv class="dish-item d-flex justify-content-between align-items-center"\u003e
                             \u003cdiv\u003e${item.dish_name}\u003c/div\u003e
                             \u003cdiv class="d-flex gap-3"\u003e
@@ -189,9 +269,9 @@
                             \u003c/div\u003e
                         \u003c/div\u003e
                     `;
-                });
-                
-                html += `
+            });
+
+            html += `
                         \u003c/div\u003e
                         \u003cdiv class="order-footer d-flex justify-content-between align-items-center"\u003e
                             \u003cspan\u003e下单时间：${formatDate(order.created_at)}\u003c/span\u003e
@@ -199,105 +279,123 @@
                                 \u003cspan class="text-danger fw-bold"\u003e总计：¥${order.total_amount.toFixed(2)}\u003c/span\u003e
                                 \u003cbutton class="btn btn-sm btn-outline-primary" onclick="viewOrderDetail('${order.order_id}')"\u003e查看详情\u003c/button\u003e
                                 ${getStatusActions(order.status, order.order_id)}
+                                \u003cbutton class="btn btn-sm btn-outline-danger" onclick="deleteOrder('${order.order_id}')"\u003e删除\u003c/button\u003e
                             \u003c/div\u003e
                         \u003c/div\u003e
                     \u003c/div\u003e
                 `;
-            });
+        });
 
-            $('#orderList').html(html);
-            renderPagination(currentPage, totalPages);
+        $('#orderList').html(html);
+        renderPagination(currentPage, totalPages);
+    }
+
+    // 获取订单状态信息
+    function getStatusInfo(status) {
+        const statusMap = {
+            // 中文状态值映射（后端返回的实际值）
+            '待支付': { text: '待支付', class: 'bg-warning text-white' },
+            '已支付': { text: '已支付', class: 'bg-info text-white' },
+            '待接单': { text: '待接单', class: 'bg-info text-white' },
+            '待配送': { text: '配送中', class: 'bg-primary text-white' },
+            '已完成': { text: '已送达', class: 'bg-success text-white' },
+            '已送达': { text: '已送达', class: 'bg-success text-white' },
+            '已取消': { text: '已取消', class: 'bg-secondary text-white' },
+            // 兼容英文状态值（为了向前兼容）
+            'pending': { text: '待支付', class: 'bg-warning text-white' },
+            'preparing': { text: '待接单', class: 'bg-info text-white' },
+            'delivering': { text: '配送中', class: 'bg-primary text-white' },
+            'delivered': { text: '已送达', class: 'bg-success text-white' },
+            'cancelled': { text: '已取消', class: 'bg-secondary text-white' }
+        };
+        return statusMap[status] || { text: '未知状态', class: 'bg-gray text-white' };
+    }
+
+    // 获取订单操作按钮
+    function getStatusActions(status, orderId) {
+        let actions = '';
+        switch (status) {
+            case '待支付':
+            case 'pending':
+                actions = `<button class="btn btn-sm btn-success" onclick="payOrder('${orderId}')">去支付</button>`;
+                actions += `<button class="btn btn-sm btn-danger" onclick="cancelOrder('${orderId}')">取消订单</button>`;
+                break;
+            case '待接单':
+            case 'preparing':
+                actions += `<button class="btn btn-sm btn-danger" onclick="cancelOrder('${orderId}')">取消订单</button>`;
+                break;
+            case '已完成':
+            case 'delivered':
+                actions = `\u003cbutton class="btn btn-sm btn-primary" onclick="confirmReceipt('${orderId}')"\u003e确认收货\u003c/button\u003e`;
+                actions += `\u003cbutton class="btn btn-sm btn-outline-primary" onclick="addComment('${orderId}')"\u003e评价\u003c/button\u003e`;
+                break;
+        }
+        return actions;
+    }
+
+    // 筛选订单
+    function filterOrders(status) {
+        currentStatus = status;
+        currentPage = 1;
+
+        // 更新按钮状态
+        $('.btn-group button').removeClass('btn-primary').addClass('btn-outline-primary');
+        $(`.btn-group button[onclick="filterOrders('${status}')"]`).removeClass('btn-outline-primary').addClass('btn-primary');
+
+        loadOrders();
+    }
+
+    // 渲染分页
+    function renderPagination(current, total) {
+        let html = `\u003cul class="pagination justify-content-center"\u003e`;
+
+        // 上一页
+        html += `\u003cli class="page-item ${current === 1 ? 'disabled' : ''}"\u003e\u003ca class="page-link" href="#" onclick="changePage(${current - 1})"\u003e上一页\u003c/a\u003e\u003c/li\u003e`;
+
+        // 页码
+        for (let i = 1; i <= total; i++) {
+            html += `\u003cli class="page-item ${current === i ? 'active' : ''}"\u003e\u003ca class="page-link" href="#" onclick="changePage(${i})"\u003e${i}\u003c/a\u003e\u003c/li\u003e`;
         }
 
-        // 获取订单状态信息
-        function getStatusInfo(status) {
-            const statusMap = {
-                'pending': { text: '待支付', class: 'bg-warning text-white' },
-                'paid': { text: '已支付', class: 'bg-info text-white' },
-                'delivering': { text: '配送中', class: 'bg-primary text-white' },
-                'delivered': { text: '已送达', class: 'bg-success text-white' },
-                'cancelled': { text: '已取消', class: 'bg-secondary text-white' }
-            };
-            return statusMap[status] || { text: '未知状态', class: 'bg-gray text-white' };
-        }
+        // 下一页
+        html += `\u003cli class="page-item ${current === total ? 'disabled' : ''}"\u003e\u003ca class="page-link" href="#" onclick="changePage(${current + 1})"\u003e下一页\u003c/a\u003e\u003c/li\u003e`;
 
-        // 获取订单操作按钮
-        function getStatusActions(status, orderId) {
-            let actions = '';
-            switch (status) {
-                case 'pending':
-                    actions = `\u003cbutton class="btn btn-sm btn-success" onclick="payOrder('${orderId}')"\u003e去支付\u003c/button\u003e`;
-                    actions += `\u003cbutton class="btn btn-sm btn-danger" onclick="cancelOrder('${orderId}')"\u003e取消订单\u003c/button\u003e`;
-                    break;
-                case 'delivered':
-                    actions = `\u003cbutton class="btn btn-sm btn-primary" onclick="confirmReceipt('${orderId}')"\u003e确认收货\u003c/button\u003e`;
-                    actions += `\u003cbutton class="btn btn-sm btn-outline-primary" onclick="addComment('${orderId}')"\u003e评价\u003c/button\u003e`;
-                    break;
-            }
-            return actions;
-        }
+        html += `\u003c/ul\u003e`;
 
-        // 筛选订单
-        function filterOrders(status) {
-            currentStatus = status;
-            currentPage = 1;
-            
-            // 更新按钮状态
-            $('.btn-group button').removeClass('btn-primary').addClass('btn-outline-primary');
-            $(`.btn-group button[onclick="filterOrders('${status}')"]`).removeClass('btn-outline-primary').addClass('btn-primary');
-            
-            loadOrders();
-        }
+        $('#pagination').html(html);
+    }
 
-        // 渲染分页
-        function renderPagination(current, total) {
-            let html = `\u003cul class="pagination justify-content-center"\u003e`;
-            
-            // 上一页
-            html += `\u003cli class="page-item ${current === 1 ? 'disabled' : ''}"\u003e\u003ca class="page-link" href="#" onclick="changePage(${current - 1})"\u003e上一页\u003c/a\u003e\u003c/li\u003e`;
-            
-            // 页码
-            for (let i = 1; i <= total; i++) {
-                html += `\u003cli class="page-item ${current === i ? 'active' : ''}"\u003e\u003ca class="page-link" href="#" onclick="changePage(${i})"\u003e${i}\u003c/a\u003e\u003c/li\u003e`;
-            }
-            
-            // 下一页
-            html += `\u003cli class="page-item ${current === total ? 'disabled' : ''}"\u003e\u003ca class="page-link" href="#" onclick="changePage(${current + 1})"\u003e下一页\u003c/a\u003e\u003c/li\u003e`;
-            
-            html += `\u003c/ul\u003e`;
-            
-            $('#pagination').html(html);
-        }
+    // 切换页码
+    function changePage(page) {
+        currentPage = page;
+        loadOrders();
+    }
 
-        // 切换页码
-        function changePage(page) {
-            currentPage = page;
-            loadOrders();
-        }
-
-        // 查看订单详情
-        function viewOrderDetail(orderId) {
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: `/api/student/orders/${orderId}`,
-                type: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function (res) {
-                    if (res.code === 200) {
-                        showOrderDetail(res.data);
-                    } else {
-                        alert('获取订单详情失败：' + res.msg);
-                    }
+    // 查看订单详情
+    function viewOrderDetail(orderId) {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/orders/${orderId}`,
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    showOrderDetail(res.data);
+                } else {
+                    alert('获取订单详情失败：' + res.msg);
                 }
-            });
-        }
+            }
+        });
+    }
 
-        // 显示订单详情
-        function showOrderDetail(order) {
-            const statusInfo = getStatusInfo(order.status);
-            let html = `
+    // 显示订单详情
+    function showOrderDetail(order) {
+        const statusInfo = getStatusInfo(order.status);
+        let html = `
                 \u003cdl class="row mb-3"\u003e
-                    \u003cdt class="col-sm-3"\u003e订单号：\u003c/dt\u003e
+                    \u003cdt class="col-sm-3"\u003e订单编号：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9"\u003e${order.order_no}\u003c/dd\u003e
+                    \u003cdt class="col-sm-3"\u003e订单ID：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e${order.order_id}\u003c/dd\u003e
                     \u003cdt class="col-sm-3"\u003e订单状态：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e\u003cspan class="status-badge ${statusInfo.class}"\u003e${statusInfo.text}\u003c/span\u003e\u003c/dd\u003e
@@ -305,8 +403,38 @@
                     \u003cdd class="col-sm-9"\u003e${order.merchant.name}\u003c/dd\u003e
                     \u003cdt class="col-sm-3"\u003e下单时间：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e${formatDate(order.created_at)}\u003c/dd\u003e
+            `;
+
+        // 显示支付时间（如果有）
+        if (order.pay_time) {
+            html += `
+                    \u003cdt class="col-sm-3"\u003e支付时间：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9"\u003e${formatDate(order.pay_time)}\u003c/dd\u003e
+            `;
+        }
+
+        // 显示完成时间（如果有）
+        if (order.finish_time) {
+            html += `
+                    \u003cdt class="col-sm-3"\u003e完成时间：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9"\u003e${formatDate(order.finish_time)}\u003c/dd\u003e
+            `;
+        }
+
+        html += `
                     \u003cdt class="col-sm-3"\u003e收货地址：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e${order.address}\u003c/dd\u003e
+            `;
+
+        // 显示备注（如果有）
+        if (order.remark) {
+            html += `
+                    \u003cdt class="col-sm-3"\u003e备注：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9"\u003e${order.remark}\u003c/dd\u003e
+            `;
+        }
+
+        html += `
                 \u003c/dl\u003e
                 \u003ch6 class="mb-2"\u003e商品清单\u003c/h6\u003e
                 \u003ctable class="table table-sm mb-3"\u003e
@@ -320,12 +448,12 @@
                     \u003c/thead\u003e
                     \u003ctbody\u003e
             `;
-            
-            let subtotal = 0;
-            order.items.forEach(item => {
-                const itemTotal = item.price * item.quantity;
-                subtotal += itemTotal;
-                html += `
+
+        let subtotal = 0;
+        order.items.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+            html += `
                     \u003ctr\u003e
                         \u003ctd\u003e${item.dish_name}\u003c/td\u003e
                         \u003ctd\u003e¥${item.price}\u003c/td\u003e
@@ -333,9 +461,9 @@
                         \u003ctd\u003e¥${itemTotal.toFixed(2)}\u003c/td\u003e
                     \u003c/tr\u003e
                 `;
-            });
-            
-            html += `
+        });
+
+        html += `
                     \u003c/tbody\u003e
                 \u003c/table\u003e
                 \u003cdl class="row justify-content-end"\u003e
@@ -343,95 +471,194 @@
                     \u003cdd class="col-sm-9"\u003e¥${subtotal.toFixed(2)}\u003c/dd\u003e
                     \u003cdt class="col-sm-3 text-right"\u003e配送费：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e¥${order.delivery_fee.toFixed(2)}\u003c/dd\u003e
-                    \u003cdt class="col-sm-3 text-right fw-bold"\u003e总计：\u003c/dt\u003e
-                    \u003cdd class="col-sm-9 text-danger fw-bold"\u003e¥${order.total_amount.toFixed(2)}\u003c/dd\u003e
+                    \u003cdt class="col-sm-3 text-right"\u003e优惠金额：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9 text-success"\u003e-¥${order.discount_amount.toFixed(2)}\u003c/dd\u003e
+                    \u003cdt class="col-sm-3 text-right"\u003e应付金额：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9"\u003e¥${order.total_amount.toFixed(2)}\u003c/dd\u003e
+                    \u003cdt class="col-sm-3 text-right fw-bold"\u003e实付金额：\u003c/dt\u003e
+                    \u003cdd class="col-sm-9 text-danger fw-bold"\u003e¥${order.pay_amount.toFixed(2)}\u003c/dd\u003e
                 \u003c/dl\u003e
             `;
-            
-            $('#orderDetailContent').html(html);
-            $('#orderDetailModal').modal('show');
+
+        $('#orderDetailContent').html(html);
+        $('#orderDetailModal').modal('show');
+    }
+
+    // 支付订单
+    function payOrder(orderId) {
+        // 获取订单详情，用于显示支付金额
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/orders/${orderId}`,
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    // 保存当前支付的订单ID和金额
+                    currentPayingOrderId = orderId;
+                    currentPayingAmount = res.data.pay_amount;
+
+                    // 更新支付金额显示
+                    $('#paymentAmount').text(`¥${currentPayingAmount.toFixed(2)}`);
+                    // 清空密码输入框和错误提示
+                    $('#payPassword').val('');
+                    $('#passwordError').addClass('d-none');
+                    // 显示支付密码模态框
+                    $('#paymentPasswordModal').modal('show');
+                } else {
+                    alert('获取订单详情失败：' + res.msg);
+                }
+            },
+            error: function () {
+                alert('网络错误，无法获取订单详情');
+            }
+        });
+    }
+
+    // 验证支付密码
+    function verifyPaymentPassword() {
+        const payPassword = $('#payPassword').val();
+        const errorElement = $('#passwordError');
+
+        // 验证密码格式
+        if (!payPassword || payPassword.length !== 6 || !/^\d+$/.test(payPassword)) {
+            errorElement.text('请输入6位数字支付密码').removeClass('d-none');
+            return;
         }
 
-        // 支付订单
-        function payOrder(orderId) {
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: `/api/student/orders/${orderId}/pay`,
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                contentType: 'application/json',
-                data: JSON.stringify({}),
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert('支付成功！');
-                        loadOrders();
-                    } else {
-                        alert('支付失败：' + res.msg);
+        // 隐藏错误提示
+        errorElement.addClass('d-none');
+
+        const token = localStorage.getItem('student_token');
+
+        // 调用支付API
+        $.ajax({
+            url: `/api/order/pay/${currentPayingOrderId}`,
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            contentType: 'application/json',
+            data: JSON.stringify({ pay_password: payPassword }),
+            success: function (res) {
+                if (res && res.code === 200) {
+                    // 支付成功
+                    $('#paymentPasswordModal').modal('hide');
+                    alert('支付成功！');
+                    loadOrders(); // 重新加载订单列表
+                    // 重置当前支付信息
+                    currentPayingOrderId = null;
+                    currentPayingAmount = 0;
+                } else {
+                    // 支付失败
+                    errorElement.text(res && res.msg ? res.msg : '支付密码错误，请重新输入').removeClass('d-none');
+                }
+            },
+            error: function (xhr) {
+                // 尝试解析错误响应
+                let errorMessage = '网络错误，请稍后重试';
+                if (xhr.responseText) {
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        if (errorResponse && errorResponse.msg) {
+                            errorMessage = errorResponse.msg;
+                        }
+                    } catch (e) {
+                        // 如果无法解析JSON，保持默认错误信息
                     }
                 }
-            });
-        }
+                errorElement.text(errorMessage).removeClass('d-none');
+            }
+        });
+    }
 
-        // 取消订单
-        function cancelOrder(orderId) {
-            if (!confirm('确定要取消该订单吗？')) return;
-            
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: `/api/student/orders/${orderId}/cancel`,
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                contentType: 'application/json',
-                data: JSON.stringify({}),
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert('订单已取消！');
-                        loadOrders();
-                    } else {
-                        alert('取消失败：' + res.msg);
-                    }
+    // 取消密码支付
+    function cancelPasswordPayment() {
+        // 隐藏密码模态框
+        $('#paymentPasswordModal').modal('hide');
+        // 重置当前支付信息
+        currentPayingOrderId = null;
+        currentPayingAmount = 0;
+    }
+
+    // 取消订单
+    function cancelOrder(orderId) {
+        if (!confirm('确定要取消该订单吗？')) return;
+
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/orders/${orderId}/cancel`,
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            success: function (res) {
+                if (res.code === 200) {
+                    alert('订单已取消！');
+                    loadOrders();
+                } else {
+                    alert('取消失败：' + res.msg);
                 }
-            });
-        }
+            }
+        });
+    }
 
-        // 确认收货
-        function confirmReceipt(orderId) {
-            if (!confirm('确认已收到商品吗？')) return;
-            
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: `/api/student/orders/${orderId}/confirm`,
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                contentType: 'application/json',
-                data: JSON.stringify({}),
-                success: function (res) {
-                    if (res.code === 200) {
-                        alert('确认收货成功！');
-                        loadOrders();
-                    } else {
-                        alert('确认收货失败：' + res.msg);
-                    }
+    // 确认收货
+    function confirmReceipt(orderId) {
+        if (!confirm('确认已收到商品吗？')) return;
+
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/orders/${orderId}/confirm`,
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            success: function (res) {
+                if (res.code === 200) {
+                    alert('确认收货成功！');
+                    loadOrders();
+                } else {
+                    alert('确认收货失败：' + res.msg);
                 }
-            });
-        }
+            }
+        });
+    }
 
-        // 添加评价
-        function addComment(orderId) {
-            alert('评价功能开发中...');
-        }
+    // 添加评价
+    function addComment(orderId) {
+        alert('评价功能开发中...');
+    }
 
-        // 格式化日期
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        }
-    </script>
+    // 删除订单
+    function deleteOrder(orderId) {
+        if (!confirm('确定要删除该订单吗？此操作不可恢复！')) return;
+
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/orders/${orderId}/delete`,
+            type: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    alert('订单已删除！');
+                    loadOrders();
+                } else {
+                    alert('删除失败：' + res.msg);
+                }
+            }
+        });
+    }
+
+    // 格式化日期
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+</script>
 {% endblock %}

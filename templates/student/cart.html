@@ -26,10 +26,6 @@
         <div class="card-footer bg-light p-4">
             <div class="row justify-content-between mb-2">
                 <div class="col-6">
-                    <div class="text-sm text-muted">商品总价</div>
-                    <div class="text-sm">¥5.00</div>
-                </div>
-                <div class="col-6 text-end">
                     <div class="text-sm text-muted">商品合计</div>
                     <div class="text-xl font-bold" id="totalPrice">¥0.00</div>
                 </div>
@@ -37,21 +33,13 @@
             <div class="row justify-content-between mb-2">
                 <div class="col-6">
                     <div class="text-sm text-muted">配送费</div>
-                    <div class="text-sm">¥5.00</div>
-                </div>
-                <div class="col-6 text-end">
-                    <div class="text-sm text-muted">配送费</div>
-                    <div class="text-sm">¥5.00</div>
+                    <div class="text-sm" id="deliveryFeeDisplay">¥5.00</div>
                 </div>
             </div>
             <div id="discountRow" class="row justify-content-between mb-2" style="display: none;">
                 <div class="col-6">
                     <div class="text-sm text-muted">优惠券优惠</div>
                     <div class="text-sm"><span id="discountAmount" class="text-danger">-¥0.00</span></div>
-                </div>
-                <div class="col-6 text-end">
-                    <div class="text-sm text-muted">优惠金额</div>
-                    <div class="text-sm"><span id="discountAmountRight" class="text-danger">-¥0.00</span></div>
                 </div>
             </div>
             <div class="row justify-content-between mb-3 mt-3 border-t pt-3">
@@ -68,7 +56,7 @@
                 </div>
             </div>
 
-            <div class="mb-3">
+            <!-- <div class="mb-3">
                 <label class="form-label">支付方式</label>
                 <div class="d-flex gap-3">
                     <div class="form-check">
@@ -82,7 +70,7 @@
                     </div>
                 </div>
                 <input type="hidden" id="payType" value="wechat">
-            </div>
+            </div> -->
 
             <div class="mb-3">
                 <label class="form-label">备注</label>
@@ -126,13 +114,87 @@
                         <div class="text-sm text-muted">配送费：¥5.00</div>
                     </div>
                 </div>
-                <!-- <div id="couponList" class="mt-4">
-                    < !-- 优惠券列表将通过JavaScript动态加载 -- >
+                <div id="couponList" class="mt-4">
+                    <!-- 优惠券列表将通过JavaScript动态加载 -->
                     <div class="text-center text-muted py-4">加载中...</div>
-                </div> -->
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 支付确认弹窗 -->
+<div class="modal fade" id="paymentConfirmModal" tabindex="-1" aria-labelledby="paymentConfirmModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentConfirmModalLabel">确认订单</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <h6>已购菜品</h6>
+                    <div id="confirmDishList" class="mt-2">
+                        <!-- 菜品列表将通过JavaScript动态加载 -->
+                    </div>
+                </div>
+                <div class="border-t pt-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <div class="text-sm">商品合计</div>
+                        <div class="text-sm font-medium" id="confirmTotalPrice">¥0.00</div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <div class="text-sm">配送费</div>
+                        <div class="text-sm" id="confirmDeliveryFee">¥5.00</div>
+                    </div>
+                    <div id="confirmDiscountRow" class="d-flex justify-content-between mb-2" style="display: none;">
+                        <div class="text-sm">优惠券优惠</div>
+                        <div class="text-sm text-danger" id="confirmDiscountAmount">-¥0.00</div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-3 pt-3 border-t">
+                        <div class="text-lg font-bold">实付金额</div>
+                        <div class="text-lg font-bold text-danger" id="confirmFinalPrice">¥0.00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                    onclick="cancelPayment()">取消支付</button>
+                <button type="button" class="btn btn-danger" onclick="confirmPayment()">确认支付</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 支付密码悬浮框 -->
+<div class="modal fade" id="paymentPasswordModal" tabindex="-1" aria-labelledby="paymentPasswordModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentPasswordModalLabel">输入支付密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"
+                    onclick="cancelPasswordPayment()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">支付金额</label>
+                    <div class="text-danger fs-4 font-bold" id="paymentAmount">¥0.00</div>
+                </div>
+                <div class="mb-4">
+                    <label for="payPassword" class="form-label">请输入6位支付密码</label>
+                    <input type="password" class="form-control" id="payPassword" placeholder="请输入支付密码" maxlength="6"
+                        pattern="\d{6}" inputmode="numeric">
+                </div>
+                <div id="passwordError" class="alert alert-danger d-none">支付密码错误，请重新输入</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cancelPasswordPayment()">取消支付</button>
+                <button type="button" class="btn btn-primary" onclick="verifyPaymentPassword()">确认支付</button>
             </div>
         </div>
     </div>
@@ -356,6 +418,39 @@
     }
 </style>
 <script>
+    // 全局变量：配送费
+    let currentDeliveryFee = 5.00;
+
+    // 获取配送费
+    function getDeliveryFee() {
+        $.ajax({
+            url: '/api/student/delivery-fee',
+            type: 'GET',
+            success: function (res) {
+                if (res && res.code === 200 && res.data && res.data.delivery_fee !== undefined) {
+                    currentDeliveryFee = res.data.delivery_fee;
+                    console.log('获取配送费成功：', currentDeliveryFee);
+                    // 更新页面上所有显示配送费的地方
+                    updateDeliveryFeeDisplay();
+                }
+            },
+            error: function () {
+                console.error('获取配送费失败，使用默认值：', currentDeliveryFee);
+            }
+        });
+    }
+
+    // 更新页面上的配送费显示
+    function updateDeliveryFeeDisplay() {
+        // 更新结算区域的配送费显示
+        const formattedFee = currentDeliveryFee.toFixed(2);
+        $('#deliveryFeeDisplay').text(`¥${formattedFee}`);
+        // 更新优惠券模态框中的配送费显示
+        $('#couponModal .text-sm.text-muted:contains(配送费)').text(`配送费：¥${formattedFee}`);
+        // 更新确认订单模态框中的配送费显示
+        $('#confirmDeliveryFee').text(`¥${formattedFee}`);
+    }
+
     // 页面加载时检查登录状态并初始化
     $(function () {
         // 获取用户信息并验证登录状态
@@ -372,6 +467,9 @@
         if ($('#userName').length) {
             $('#userName').text(userInfo.name);
         }
+
+        // 获取配送费
+        getDeliveryFee();
 
         // 加载购物车数据
         loadCart();
@@ -404,6 +502,17 @@
         // 监听支付方式选择变化
         $('input[name="payType"]').change(function () {
             $('#payType').val($(this).val());
+        });
+
+        // 加载存储的备注信息
+        const savedRemark = localStorage.getItem('orderRemark');
+        if (savedRemark) {
+            $('#orderRemark').val(savedRemark);
+        }
+
+        // 监听备注输入变化，实时保存到localStorage
+        $('#orderRemark').on('input', function () {
+            localStorage.setItem('orderRemark', $(this).val());
         });
     });
 
@@ -458,43 +567,6 @@
         let html = '';
         let totalPrice = 0;
 
-        // 遍历购物车商品并生成HTML
-        // cartItems.forEach(item => {
-        //     if (!item || !item.dish) return;
-
-        //     const itemTotal = item.dish.price * item.quantity;
-        //     totalPrice += itemTotal;
-
-        //     html += `
-        //             <div class="cart-item row">
-        //                 <div class="col-md-2">
-        //                     <img src="/static/${item.dish.img_url || 'uploads/dish/default.png'}" class="dish-img rounded">
-        //                 </div>
-        //                 <div class="col-md-4">
-        //                     <h6>${item.dish.dish_name}</h6>
-        //                     <p class="text-muted">${item.dish.description || '无描述'}</p>
-        //                     <small class="text-muted">商家：${item.dish.merchant_name || '未知商家'}</small>
-        //                 </div>
-        //                 <div class="col-md-2">
-        //                     <span class="text-danger fs-5">¥${item.dish.price.toFixed(2)}</span>
-        //                 </div>
-        //                 <div class="col-md-2">
-        //                     <div class="quantity-control">
-        //                         <button class="btn btn-sm btn-outline-secondary" 
-        //                             onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
-        //                         <span>${item.quantity}</span>
-        //                         <button class="btn btn-sm btn-outline-secondary" 
-        //                             onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
-        //                     </div>
-        //                 </div>
-        //                 <div class="col-md-2 text-end">
-        //                     <span class="fs-6 font-weight-bold">¥${itemTotal.toFixed(2)}</span>
-        //                     <button class="btn btn-sm btn-danger mt-2" 
-        //                         onclick="removeFromCart(${item.id})"></button>
-        //                 </div>
-        //             </div>
-        //         `;
-        // });
 
         // 保存购物车数据到localStorage
         saveCartToLocalStorage(cartItems);
@@ -502,7 +574,8 @@
         // 更新DOM
         $('#cartList').html(html);
         $('#totalPrice').text('¥' + totalPrice.toFixed(2));
-        $('#finalPrice').text('¥' + (totalPrice + 5).toFixed(2));
+        // 使用全局配送费变量计算最终价格
+        updatePrices();
         $('#payBtn').prop('disabled', false);
     }
 
@@ -610,40 +683,168 @@
 
 
 
+    // 提示函数
+    function showToast(message, type = 'success') {
+        try {
+            // 如果Bootstrap Toast组件可用
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                // 检查是否已有toast元素
+                let toastElement = document.getElementById('toastNotification');
+                if (!toastElement) {
+                    // 创建toast元素
+                    toastElement = document.createElement('div');
+                    toastElement.id = 'toastNotification';
+                    toastElement.className = `toast position-fixed top-0 end-0 m-3 text-white ${type === 'error' ? 'bg-danger' : 'bg-success'}`;
+                    toastElement.role = 'alert';
+                    toastElement.setAttribute('aria-live', 'assertive');
+                    toastElement.setAttribute('aria-atomic', 'true');
+
+                    toastElement.innerHTML = `
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    `;
+
+                    document.body.appendChild(toastElement);
+                } else {
+                    // 更新现有toast内容和样式
+                    toastElement.className = `toast position-fixed top-0 end-0 m-3 text-white ${type === 'error' ? 'bg-danger' : 'bg-success'}`;
+                    const bodyElement = toastElement.querySelector('.toast-body');
+                    if (bodyElement) {
+                        bodyElement.textContent = message;
+                    }
+                }
+
+                // 显示toast
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+            } else {
+                // 降级为简单的alert
+                console.log(`Toast: ${message}`);
+                // 可选：如果需要，也可以使用简单的alert
+                // alert(message);
+            }
+        } catch (e) {
+            console.error('显示提示时出错:', e);
+        }
+    }
+
     // 显示优惠券模态框
     function showCouponModal() {
-        // 更新模态框中的订单金额
-        $('#modalTotalPrice').text($('#totalPrice').text());
-        // 加载优惠券数据
-        loadCoupons();
-        // 显示模态框
-        const modal = new bootstrap.Modal(document.getElementById('couponModal'));
-        modal.show();
+        try {
+            console.log('开始显示优惠券模态框...');
+
+            // 检查模态框元素是否存在
+            const couponModalElement = document.getElementById('couponModal');
+            if (!couponModalElement) {
+                console.error('优惠券模态框元素不存在');
+                if (typeof showToast === 'function') {
+                    showToast('模态框未找到', 'error');
+                }
+                return;
+            }
+
+            // 更新模态框中的订单金额
+            const modalTotalPriceElement = document.getElementById('modalTotalPrice');
+            const totalPriceElement = document.getElementById('totalPrice');
+            if (modalTotalPriceElement && totalPriceElement) {
+                modalTotalPriceElement.textContent = totalPriceElement.textContent;
+                console.log('已更新模态框订单金额:', modalTotalPriceElement.textContent);
+            } else {
+                console.warn('无法更新模态框订单金额');
+            }
+
+            // 加载优惠券数据
+            loadCoupons();
+
+            // 显示模态框
+            // 先检查是否已有实例
+            let modal = bootstrap.Modal.getInstance(couponModalElement);
+            if (!modal) {
+                modal = new bootstrap.Modal(couponModalElement);
+                console.log('创建新的模态框实例');
+            }
+
+            // 显示模态框
+            modal.show();
+            console.log('优惠券模态框已显示');
+
+            // 显示提示
+            // if (typeof showToast === 'function') {
+            //     showToast('优惠券选择界面已打开');
+            // }
+        } catch (e) {
+            console.error('显示优惠券模态框时发生异常:', e);
+            if (typeof showToast === 'function') {
+                showToast('打开优惠券失败', 'error');
+            }
+        }
     }
 
     // 加载用户可用的优惠券
     function loadCoupons() {
         console.log('开始加载可用优惠券...');
-        const token = UserAuthManager.getToken();
-        $.ajax({
-            url: '/api/student/coupons',
-            type: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` },
-            success: function (res) {
-                console.log('优惠券加载响应:', res);
-                if (res && res.code === 200 && res.data) {
-                    console.log('获取到的优惠券列表:', res.data);
-                    renderCoupons(res.data);
-                } else {
-                    console.error('优惠券加载失败:', res ? res.msg : '未知错误');
-                    $('#couponList').html('<div class="text-center text-danger py-4">无法加载优惠券</div>');
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error('优惠券加载请求错误:', error);
-                $('#couponList').html('<div class="text-center text-danger py-4">网络错误，无法加载优惠券</div>');
+
+        try {
+            // 显示加载状态
+            const couponListElement = document.getElementById('couponList');
+            if (couponListElement) {
+                couponListElement.innerHTML = '<div class="text-center py-5"><i class="fa fa-spinner fa-spin mr-2"></i>正在加载优惠券...</div>';
             }
-        });
+
+            // 使用session验证，不再需要Authorization头
+            $.ajax({
+                url: '/api/student/coupons',
+                type: 'GET',
+                cache: false,
+                dataType: 'json',
+                success: function (res) {
+                    console.log('优惠券加载响应:', res);
+
+                    // 增强数据格式处理
+                    let couponsData = [];
+                    if (res && res.code === 200) {
+                        if (Array.isArray(res.data)) {
+                            couponsData = res.data;
+                        } else if (res.data && Array.isArray(res.data.coupons)) {
+                            couponsData = res.data.coupons;
+                        } else {
+                            console.warn('未识别的数据格式');
+                        }
+                    } else if (Array.isArray(res)) {
+                        // 兼容直接返回数组的情况
+                        couponsData = res;
+                    }
+
+                    console.log('处理后的优惠券数据:', couponsData);
+
+                    // 调用更新后的renderCoupons函数
+                    renderCoupons(couponsData);
+                },
+                error: function (xhr, status, error) {
+                    console.error('优惠券加载请求错误:', error);
+                    console.log('XHR状态:', xhr.status);
+                    console.log('响应文本:', xhr.responseText);
+
+                    if (couponListElement) {
+                        couponListElement.innerHTML = '<div class="text-center text-danger py-4">网络错误，无法加载优惠券</div>';
+                    }
+
+                    // 显示错误提示
+                    if (typeof showToast === 'function') {
+                        showToast('加载优惠券失败', 'error');
+                    }
+                },
+                complete: function () {
+                    console.log('优惠券加载请求完成');
+                }
+            });
+        } catch (e) {
+            console.error('加载优惠券时发生异常:', e);
+            if (document.getElementById('couponList')) {
+                document.getElementById('couponList').innerHTML = '<div class="text-center text-danger py-4">加载异常</div>';
+            }
+        }
     }
 
     // 渲染优惠券列表
@@ -651,50 +852,76 @@
         console.log('开始渲染优惠券列表...');
         console.log('传入的优惠券数据:', coupons);
 
-        if (!coupons || coupons.length === 0) {
-            console.log('优惠券列表为空');
-            $('#couponList').html('<div class="text-center text-muted py-4">暂无可用优惠券</div>');
-            return;
+        try {
+            // 使用原生DOM操作，清空优惠券列表
+            const couponListElement = document.getElementById('couponList');
+            if (!couponListElement) {
+                console.error('优惠券列表容器不存在');
+                return;
+            }
+
+            // 清空列表
+            couponListElement.innerHTML = '';
+
+            if (!Array.isArray(coupons) || coupons.length === 0) {
+                console.log('优惠券列表为空');
+                couponListElement.innerHTML = '<div class="text-center text-muted py-4">暂无可用优惠券</div>';
+                return;
+            }
+
+            let html = '';
+            let selectedCoupon = null;
+            try {
+                selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
+            } catch (e) {
+                console.error('解析选中优惠券时出错:', e);
+                selectedCoupon = null;
+            }
+
+            console.log('当前选中的优惠券:', selectedCoupon);
+
+            coupons.forEach(coupon => {
+                try {
+                    console.log('处理优惠券:', coupon.id, coupon.coupon_name || coupon.name);
+                    const isSelected = selectedCoupon && selectedCoupon.id === coupon.id;
+                    const validTotalPrice = coupon.min_spend || 0;
+                    const currentTotal = parseFloat($('#totalPrice').text().replace('¥', '')) || 0;
+                    const isAvailable = currentTotal >= validTotalPrice;
+
+                    console.log(`优惠券 ${coupon.id}: 选中状态=${isSelected}, 可用状态=${isAvailable}, 当前总价=${currentTotal}, 最低消费=${validTotalPrice}`);
+
+                    html += `
+                            <div class="coupon-item p-3 mb-3 border rounded ${isSelected ? 'border-success bg-success-subtle' : 'border-gray-200'} ${!isAvailable ? 'opacity-50' : ''}" data-id="${coupon.id}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3 text-center">
+                                        <span class="text-danger fs-3 font-bold">¥${coupon.discount_amount || coupon.value}</span>
+                                        <div class="text-xs text-muted mt-1">满${validTotalPrice}元可用</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>${coupon.coupon_name || coupon.name}</h6>
+                                        <p class="text-xs text-muted">有效期至：${coupon.expire_date || '未知'}</p>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                    <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'} select-coupon-btn"
+                                        onclick="selectCoupon(${coupon.id}, '${coupon.coupon_name || coupon.name}', ${coupon.discount_amount || coupon.value})"
+                                        ${!isAvailable ? 'disabled title="未满足最低消费条件"' : ''}>
+                                        ${isSelected ? '已选择' : '选择'}
+                                    </button>
+                                </div>
+                                </div>
+                            </div>
+                        `;
+                } catch (e) {
+                    console.error('处理单个优惠券时出错:', e, '优惠券数据:', coupon);
+                }
+            });
+
+            couponListElement.innerHTML = html;
+            console.log('优惠券列表渲染完成');
+        } catch (e) {
+            console.error('渲染优惠券列表时发生异常:', e);
+            $('#couponList').html('<div class="text-center text-danger py-4">渲染优惠券失败</div>');
         }
-
-        let html = '';
-        const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
-        console.log('当前选中的优惠券:', selectedCoupon);
-
-        coupons.forEach(coupon => {
-            console.log('处理优惠券:', coupon.id, coupon.name);
-            const isSelected = selectedCoupon && selectedCoupon.id === coupon.id;
-            const validTotalPrice = coupon.min_spend || 0;
-            const currentTotal = parseFloat($('#totalPrice').text().replace('¥', '')) || 0;
-            const isAvailable = currentTotal >= validTotalPrice;
-
-            console.log(`优惠券 ${coupon.id}: 选中状态=${isSelected}, 可用状态=${isAvailable}, 当前总价=${currentTotal}, 最低消费=${validTotalPrice}`);
-
-            html += `
-                    <div class="coupon-item p-3 mb-3 border rounded ${isSelected ? 'border-success bg-success-subtle' : 'border-gray-200'} ${!isAvailable ? 'opacity-50' : ''}">
-                        <div class="row align-items-center">
-                            <div class="col-md-3 text-center">
-                                <span class="text-danger fs-3 font-bold">¥${coupon.discount_amount}</span>
-                                <div class="text-xs text-muted mt-1">满${validTotalPrice}元可用</div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>${coupon.name}</h6>
-                                <p class="text-xs text-muted">有效期至：${coupon.expire_date}</p>
-                            </div>
-                            <div class="col-md-3 text-end">
-                            <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'}"
-                                onclick="selectCoupon(${JSON.stringify(coupon).replace(/"/g, '\\"')})"
-                                ${!isAvailable ? 'disabled title="未满足最低消费条件"' : ''}>
-                                ${isSelected ? '已选择' : '选择'}
-                            </button>
-                        </div>
-                        </div>
-                    </div>
-                `;
-        });
-
-        $('#couponList').html(html);
-        console.log('优惠券列表渲染完成')
     }
 
     // 选择地址 - 全屏中心模态对话框实现
@@ -961,25 +1188,49 @@
     }
 
     // 选择优惠券
-    function selectCoupon(coupon) {
-        // 调试信息
-        console.log('选择优惠券:', coupon);
-        console.log('优惠券ID:', coupon.id);
+    function selectCoupon(id, name, discountAmount) {
+        try {
+            // 构建优惠券对象
+            const coupon = {
+                id: id,
+                name: name,
+                coupon_name: name,
+                discount_amount: discountAmount
+            };
 
-        // 存储选择的优惠券
-        localStorage.setItem('selectedCoupon', JSON.stringify(coupon));
-        console.log('优惠券已存储到localStorage');
+            // 调试信息
+            console.log('选择优惠券:', coupon);
+            console.log('优惠券ID:', coupon.id);
 
-        // 更新UI显示
-        $('#selectedCouponName').text(coupon.name);
-        $('#selectedCouponInfo').removeClass('d-none');
+            // 存储选择的优惠券
+            localStorage.setItem('selectedCoupon', JSON.stringify(coupon));
+            console.log('优惠券已存储到localStorage');
 
-        // 关闭模态框
-        const modal = bootstrap.Modal.getInstance(document.getElementById('couponModal'));
-        modal.hide();
+            // 更新UI显示
+            $('#selectedCouponName').text(coupon.name);
+            $('#selectedCouponInfo').removeClass('d-none');
 
-        // 更新价格计算（包含优惠）
-        updatePrices();
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('couponModal'));
+            if (modal) {
+                modal.hide();
+            } else {
+                console.error('无法获取模态框实例');
+            }
+
+            // 更新价格计算（包含优惠）
+            updatePrices();
+
+            // 显示提示
+            if (typeof showToast === 'function') {
+                showToast('优惠券已选择');
+            }
+        } catch (e) {
+            console.error('选择优惠券时发生异常:', e);
+            if (typeof showToast === 'function') {
+                showToast('选择优惠券失败', 'error');
+            }
+        }
     }
 
     // 移除已选择的优惠券
@@ -992,7 +1243,9 @@
     // 更新价格计算（包含优惠券）
     function updatePrices() {
         const totalPrice = parseFloat($('#totalPrice').text().replace('¥', '')) || 0;
-        const deliveryFee = 5.00;
+
+        // 使用全局配送费变量
+        const deliveryFee = currentDeliveryFee;
 
         // 检查是否有选中的优惠券
         let discount = 0;
@@ -1028,7 +1281,8 @@
         if (!cartItems || cartItems.length === 0) {
             $('#cartList').html('<div class="text-center text-muted py-4">购物车为空</div>');
             $('#totalPrice').text('¥0.00');
-            $('#finalPrice').text('¥5.00');
+            // 使用全局配送费变量
+            $('#finalPrice').text(`¥${currentDeliveryFee.toFixed(2)}`);
             $('#payBtn').prop('disabled', true);
             $('#selectCouponBtn').prop('disabled', true);
             $('#selectedCouponInfo').addClass('d-none');
@@ -1144,76 +1398,137 @@
         // 获取选中的支付方式
         const selectedPayType = $('#payType').val() || 'wechat';
 
-        // 获取购物车中的商品，检查是否来自同一商户
-        const cartItems = JSON.parse(localStorage.getItem('currentCart')) || [];
-        if (cartItems.length === 0) {
-            alert('购物车为空');
-            return;
-        }
-
-        // 检查所有商品是否来自同一商户
-        const merchantIds = [...new Set(cartItems.map(item => item.dish.merchant_id))];
-        if (merchantIds.length > 1) {
-            alert('暂不支持跨商户下单，请分开结算');
-            return;
-        }
-
-        // 获取选中的优惠券
-        const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
-        // 调试信息 - 验证优惠券ID
-        console.log('从localStorage获取的优惠券:', selectedCoupon);
-        console.log('传递给后端的优惠券ID:', selectedCoupon ? selectedCoupon.id : null);
-
         // 添加加载状态
         const payBtn = $('#payBtn');
         const originalText = payBtn.text();
         payBtn.prop('disabled', true).text('处理中...');
 
-        const token = UserAuthManager.getToken();
-        const address = JSON.parse(selectedAddress);
-
-        // 构建订单数据，使用正确的地址字段
-        const orderData = {
-            merchant_id: merchantIds[0],
-            address_id: address.id, // 使用地址ID而不是地址字符串
-            pay_type: selectedPayType,
-            coupon_id: selectedCoupon ? selectedCoupon.id : null,
-            remark: $('#orderRemark').val() || ''
-        };
-
-        console.log('创建订单时传递的数据:', orderData);
-
+        // 直接从后端API获取最新的购物车数据
         $.ajax({
-            url: '/api/student/order/create',
-            type: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            contentType: 'application/json',
-            data: JSON.stringify(orderData),
+            url: '/api/student/cart',
+            type: 'GET',
             success: function (res) {
-                if (res && res.code === 200 && res.data) {
-                    // 清除选中的优惠券
-                    localStorage.removeItem('selectedCoupon');
+                if (res && res.code === 200 && res.data && res.data.items) {
+                    const cartItems = res.data.items;
 
-                    // 清除购物车数据
-                    localStorage.removeItem('currentCart');
+                    if (cartItems.length === 0) {
+                        alert('购物车为空');
+                        payBtn.prop('disabled', false).text(originalText);
+                        return;
+                    }
 
-                    // 模拟支付流程
-                    processPayment(res.data.order_id, res.data.pay_amount, selectedPayType);
+                    // 按商户ID对商品进行分组
+                    const itemsByMerchant = {};
+                    cartItems.forEach(item => {
+                        const merchantId = item.dish.merchant_id;
+                        if (!itemsByMerchant[merchantId]) {
+                            itemsByMerchant[merchantId] = [];
+                        }
+                        itemsByMerchant[merchantId].push(item);
+                    });
+
+                    // 保存按钮引用，用于取消支付时恢复状态
+                    window.currentPayBtn = payBtn;
+                    window.currentOriginalText = originalText;
+
+                    // 显示支付确认弹窗
+                    showPaymentConfirmModal(cartItems, itemsByMerchant, selectedAddress, selectedPayType, payBtn, originalText);
                 } else {
-                    alert('创建订单失败：' + (res ? res.msg : '未知错误'));
+                    alert('获取购物车数据失败：' + (res ? res.msg : '未知错误'));
+                    payBtn.prop('disabled', false).text(originalText);
                 }
             },
             error: function () {
-                alert('网络错误，无法创建订单');
-            },
-            complete: function () {
-                // 恢复按钮状态
+                alert('网络错误，无法获取购物车数据');
                 payBtn.prop('disabled', false).text(originalText);
             }
         });
+
+        // 阻止后续代码立即执行
+        return;
     }
 
-    // 处理支付流程
+    // 处理订单创建的核心逻辑
+    // function processOrderCreation(cartItems, itemsByMerchant, selectedAddress, selectedPayType, payBtn, originalText) {
+    //     // 获取选中的优惠券
+    //     const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
+    //     // 调试信息 - 验证优惠券ID
+    //     console.log('从localStorage获取的优惠券:', selectedCoupon);
+    //     console.log('传递给后端的优惠券ID:', selectedCoupon ? selectedCoupon.id : null);
+    //     console.log('按商户分组的商品:', itemsByMerchant);
+
+    //     const token = UserAuthManager.getToken();
+    //     const address = JSON.parse(selectedAddress);
+    //     const orderRemark = $('#orderRemark').val() || '';
+
+    //     // 保存创建的订单信息
+    //     const createdOrders = [];
+    //     let orderCreationCount = 0;
+    //     const totalMerchants = Object.keys(itemsByMerchant).length;
+    //     let hasError = false;
+
+    //     // 为每个商户创建单独的订单
+    //     Object.keys(itemsByMerchant).forEach(merchantId => {
+    //         // 构建订单数据
+    //         const orderData = {
+    //             merchant_id: merchantId,
+    //             address_id: address.id,
+    //             coupon_id: selectedCoupon ? selectedCoupon.id : null,
+    //             remark: orderRemark,
+    //             // 在前端临时存储购物车项ID，方便后端处理
+    //             cart_item_ids: itemsByMerchant[merchantId].map(item => item.id)
+    //         };
+
+    //         console.log(`为商户 ${merchantId} 创建订单时传递的数据:`, orderData);
+
+    //         $.ajax({
+    //             url: '/api/student/order/create',
+    //             type: 'POST',
+    //             headers: { 'Authorization': `Bearer ${token}` },
+    //             contentType: 'application/json',
+    //             data: JSON.stringify(orderData),
+    //             success: function (res) {
+    //                 if (res && res.code === 200 && res.data) {
+    //                     createdOrders.push({
+    //                         order_id: res.data.order_id,
+    //                         pay_amount: res.data.pay_amount,
+    //                         merchant_id: merchantId
+    //                     });
+    //                     // console.log(`商户 ${merchantId} 订单创建成功:`, res.data);
+    //                 } else {
+    //                     hasError = true;
+    //                     alert(`为商户创建订单失败：${res ? res.msg : '未知错误'}`);
+    //                     console.error(`商户 ${merchantId} 订单创建失败:`, res);
+    //                 }
+    //             },
+    //             error: function () {
+    //                 hasError = true;
+    //                 alert('网络错误，无法创建订单');
+    //             },
+    //             complete: function () {
+    //                 orderCreationCount++;
+
+    //                 // 当所有订单都创建完成
+    //                 if (orderCreationCount === totalMerchants) {
+    //                     // 恢复按钮状态
+    //                     payBtn.prop('disabled', false).text(originalText);
+
+    //                     if (!hasError && createdOrders.length > 0) {
+    //                         // 清除选中的优惠券
+    //                         localStorage.removeItem('selectedCoupon');
+    //                         // 清除购物车数据
+    //                         localStorage.removeItem('currentCart');
+
+    //                         // 处理多订单支付
+    //                         processMultiplePayments(createdOrders, selectedPayType);
+    //                     }
+    //                 }
+    //             }
+    //         });
+    //     });
+    // }
+
+    // 处理单个支付流程
     function processPayment(orderId, amount, payType) {
         // 模拟支付过程
         console.log(`开始支付订单 ${orderId}，金额：${amount}，支付方式：${payType}`);
@@ -1227,13 +1542,542 @@
         }, 1500);
     }
 
+    // 处理多订单支付流程
+    function processMultiplePayments(orders, payType) {
+        // 计算总支付金额
+        const totalAmount = orders.reduce((sum, order) => sum + order.pay_amount, 0);
+
+        console.log('开始处理多订单支付:', orders);
+        console.log(`总支付金额: ${totalAmount}，支付方式: ${payType}`);
+
+        // 这里应该调用实际的支付接口，现在简单模拟
+        // 在实际场景中，这里可能需要调用批量支付接口或依次调用支付接口
+        setTimeout(() => {
+            // 模拟所有支付成功
+            alert(`多商户订单支付成功！共支付 ${totalAmount} 元，已为 ${orders.length} 个商户创建了订单。`);
+
+            // 记录支付成功的订单ID，便于后续查询
+            const successOrderIds = orders.map(order => order.order_id).join(', ');
+            console.log(`支付成功的订单ID: ${successOrderIds}`);
+
+            // 跳转到订单页面
+            window.location.href = '/student/orders';
+        }, 1500);
+    }
+
     // 保存当前购物车数据到localStorage
     function saveCartToLocalStorage(cartItems) {
         localStorage.setItem('currentCart', JSON.stringify(cartItems));
     }
 
+    // 保存订单备注到localStorage
+    function saveOrderRemark(remark) {
+        localStorage.setItem('orderRemark', remark);
+    }
+
     // 移除重复的退出登录函数，使用base.html中定义的全局logout函数
+
+    // 全局变量，用于存储待处理的订单数据
+    let pendingOrderData = null;
+
+    // 显示支付确认弹窗
+    function showPaymentConfirmModal(cartItems, itemsByMerchant, selectedAddress, selectedPayType, payBtn, originalText) {
+        // 保存待处理的订单数据
+        pendingOrderData = {
+            cartItems,
+            itemsByMerchant,
+            selectedAddress,
+            selectedPayType,
+            payBtn,
+            originalText
+        };
+
+        // 填充菜品列表
+        populateConfirmDishList(cartItems);
+
+        // 计算并显示价格信息
+        const totalPrice = cartItems.reduce((sum, item) => sum + (item.dish.price * item.quantity), 0);
+        const deliveryFee = currentDeliveryFee; // 使用全局配送费变量
+        const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
+        let discountAmount = 0;
+
+        if (selectedCoupon) {
+            // 应用优惠券折扣
+            if (selectedCoupon.type === 'full_reduction') {
+                if (totalPrice >= selectedCoupon.min_amount) {
+                    discountAmount = selectedCoupon.discount_value;
+                }
+            } else if (selectedCoupon.type === 'no_threshold') {
+                discountAmount = selectedCoupon.discount_value;
+            } else if (selectedCoupon.type === 'discount') {
+                discountAmount = totalPrice * (1 - selectedCoupon.discount_value / 100);
+            }
+
+            // 显示优惠信息
+            $('#confirmDiscountRow').show();
+            $('#confirmDiscountAmount').text(`-¥${discountAmount.toFixed(2)}`);
+        } else {
+            // 隐藏优惠信息
+            $('#confirmDiscountRow').hide();
+        }
+
+        // 计算实付金额
+        const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount);
+
+        // 更新价格显示
+        $('#confirmTotalPrice').text(`¥${totalPrice.toFixed(2)}`);
+        $('#confirmDeliveryFee').text(`¥${deliveryFee.toFixed(2)}`);
+        $('#confirmFinalPrice').text(`¥${finalPrice.toFixed(2)}`);
+
+        // 显示弹窗
+        $('#paymentConfirmModal').modal('show');
+    }
+
+    // 填充确认弹窗中的菜品列表
+    function populateConfirmDishList(cartItems) {
+        const dishListContainer = $('#confirmDishList');
+        dishListContainer.empty(); // 清空现有内容
+
+        // 按商户分组显示菜品
+        const dishesByMerchant = {};
+        cartItems.forEach(item => {
+            const merchantId = item.dish.merchant_id;
+            if (!dishesByMerchant[merchantId]) {
+                dishesByMerchant[merchantId] = [];
+            }
+            dishesByMerchant[merchantId].push(item);
+        });
+
+        // 遍历每个商户的菜品
+        Object.values(dishesByMerchant).forEach(merchantDishes => {
+            // 添加商户名称（如果有商户名称信息）
+            if (merchantDishes.length > 0 && merchantDishes[0].dish.merchant_name) {
+                const merchantName = $('<div class="font-medium text-sm text-muted mb-2"></div>')
+                    .text(merchantDishes[0].dish.merchant_name);
+                dishListContainer.append(merchantName);
+            }
+
+            // 添加每个菜品
+            merchantDishes.forEach(item => {
+                const dishItem = $('<div class="confirm-dish-item"></div>');
+
+                const dishName = $('<div class="confirm-dish-name"></div>')
+                    .text(item.dish.name);
+
+                const dishQuantity = $('<div class="confirm-dish-quantity"></div>')
+                    .text(`x${item.quantity}`);
+
+                const dishPrice = $('<div class="confirm-dish-price"></div>')
+                    .text(`¥${(item.dish.price * item.quantity).toFixed(2)}`);
+
+                dishItem.append(dishName, dishQuantity, dishPrice);
+                dishListContainer.append(dishItem);
+            });
+        });
+    }
+
+    // 确认支付
+    function confirmPayment() {
+        if (!pendingOrderData) {
+            alert('订单数据异常，请重新尝试');
+            return;
+        }
+
+        // 隐藏确认弹窗
+        $('#paymentConfirmModal').modal('hide');
+
+        // 计算实付金额
+        const cartItems = pendingOrderData.cartItems;
+        const totalPrice = cartItems.reduce((sum, item) => sum + (item.dish.price * item.quantity), 0);
+        const deliveryFee = currentDeliveryFee; // 使用全局配送费变量
+        const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
+        let discountAmount = 0;
+
+        if (selectedCoupon) {
+            // 应用优惠券折扣
+            if (selectedCoupon.type === 'full_reduction') {
+                if (totalPrice >= selectedCoupon.min_amount) {
+                    discountAmount = selectedCoupon.discount_value;
+                }
+            } else if (selectedCoupon.type === 'no_threshold') {
+                discountAmount = selectedCoupon.discount_value;
+            } else if (selectedCoupon.type === 'discount') {
+                discountAmount = totalPrice * (1 - selectedCoupon.discount_value / 100);
+            }
+        }
+
+        // 计算实付金额
+        const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount);
+
+        // 更新支付金额显示
+        $('#paymentAmount').text(`¥${finalPrice.toFixed(2)}`);
+        // 清空密码输入框和错误提示
+        $('#payPassword').val('');
+        $('#passwordError').addClass('d-none');
+
+        // 显示支付密码悬浮框
+        $('#paymentPasswordModal').modal('show');
+    }
+
+    // 验证支付密码
+    function verifyPaymentPassword() {
+        const payPassword = $('#payPassword').val();
+        const errorElement = $('#passwordError');
+
+        // 验证密码格式
+        if (!payPassword || payPassword.length !== 6 || !/^\d+$/.test(payPassword)) {
+            errorElement.text('请输入6位数字支付密码').removeClass('d-none');
+            return;
+        }
+
+        // 隐藏错误提示
+        errorElement.addClass('d-none');
+
+        // 获取实付金额
+        const cartItems = pendingOrderData.cartItems;
+        const totalPrice = cartItems.reduce((sum, item) => sum + (item.dish.price * item.quantity), 0);
+        const deliveryFee = currentDeliveryFee; // 使用全局配送费变量
+        const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
+        let discountAmount = 0;
+
+        if (selectedCoupon) {
+            // 应用优惠券折扣
+            if (selectedCoupon.type === 'full_reduction') {
+                if (totalPrice >= selectedCoupon.min_amount) {
+                    discountAmount = selectedCoupon.discount_value;
+                }
+            } else if (selectedCoupon.type === 'no_threshold') {
+                discountAmount = selectedCoupon.discount_value;
+            } else if (selectedCoupon.type === 'discount') {
+                discountAmount = totalPrice * (1 - selectedCoupon.discount_value / 100);
+            }
+        }
+
+        // 计算实付金额
+        const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount);
+
+        const token = UserAuthManager.getToken();
+
+        // 调用支付密码验证和钱包扣款API
+        $.ajax({
+            url: '/api/student/wallet/pay',
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            contentType: 'application/json',
+            data: JSON.stringify({
+                password: payPassword,
+                amount: finalPrice
+            }),
+            success: function (res) {
+                if (res && res.code === 200) {
+                    // 密码正确，扣款成功
+                    $('#paymentPasswordModal').modal('hide');
+                    // 调用原始的订单创建逻辑（支付成功，直接设置为待接单状态）
+                    createOrdersFromPendingData('待接单');
+                } else {
+                    // 密码错误或扣款失败
+                    errorElement.text(res && res.msg ? res.msg : '支付密码错误，请重新输入').removeClass('d-none');
+                }
+            },
+            error: function (xhr) {
+                // 尝试解析错误响应
+                let errorMessage = '网络错误，请稍后重试';
+                if (xhr.responseText) {
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        if (errorResponse && errorResponse.msg) {
+                            errorMessage = errorResponse.msg;
+                        }
+                    } catch (e) {
+                        // 如果无法解析JSON，保持默认错误信息
+                    }
+                }
+                errorElement.text(errorMessage).removeClass('d-none');
+            }
+        });
+    }
+
+    // 取消密码支付
+    function cancelPasswordPayment() {
+        // 隐藏密码悬浮框
+        $('#paymentPasswordModal').modal('hide');
+        // 恢复按钮状态
+        if (window.currentPayBtn) {
+            window.currentPayBtn.prop('disabled', false).text(window.currentOriginalText);
+            window.currentPayBtn = null;
+            window.currentOriginalText = null;
+        }
+        // 在取消支付时创建待支付状态的订单
+        if (pendingOrderData) {
+            // 创建待支付状态的订单
+            createOrdersFromPendingData();
+            // 清空待处理数据
+            pendingOrderData = null;
+        }
+    }
+
+    // 取消支付
+    function cancelPayment() {
+        // 清空待处理数据
+        pendingOrderData = null;
+
+        // 恢复按钮状态
+        if (window.currentPayBtn) {
+            window.currentPayBtn.prop('disabled', false).text(window.currentOriginalText);
+            window.currentPayBtn = null;
+            window.currentOriginalText = null;
+        }
+
+        // 隐藏弹窗
+        $('#paymentConfirmModal').modal('hide');
+    }
+
+    // 从待处理数据创建订单
+    function createOrdersFromPendingData(status = '待支付') {
+        const { cartItems, itemsByMerchant, selectedAddress, selectedPayType, payBtn, originalText } = pendingOrderData;
+
+        // 获取选中的优惠券
+        const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
+
+        const token = UserAuthManager.getToken();
+        const address = JSON.parse(selectedAddress);
+        const orderRemark = $('#orderRemark').val() || '';
+
+        // 保存创建的订单信息
+        const createdOrders = [];
+        let orderCreationCount = 0;
+        const totalMerchants = Object.keys(itemsByMerchant).length;
+        let hasError = false;
+
+        // 为每个商户创建单独的订单
+        Object.keys(itemsByMerchant).forEach(merchantId => {
+            // 构建订单数据
+            const orderData = {
+                merchant_id: merchantId,
+                address_id: address.id,
+                coupon_id: selectedCoupon ? selectedCoupon.id : null,
+                remark: orderRemark,
+                status: status,
+                // 在前端临时存储购物车项ID，方便后端处理
+                cart_item_ids: itemsByMerchant[merchantId].map(item => item.id)
+            };
+
+            console.log(`为商户 ${merchantId} 创建订单时传递的数据:`, orderData);
+
+            $.ajax({
+                url: '/api/student/order/create',
+                type: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                contentType: 'application/json',
+                data: JSON.stringify(orderData),
+                success: function (res) {
+                    if (res && res.code === 200 && res.data) {
+                        createdOrders.push({
+                            order_id: res.data.order_id,
+                            pay_amount: res.data.pay_amount,
+                            merchant_id: merchantId
+                        });
+                        console.log(`商户 ${merchantId} 订单创建成功:`, res.data);
+                    } else {
+                        hasError = true;
+                        alert(`为商户创建订单失败：${res ? res.msg : '未知错误'}`);
+                        console.error(`商户 ${merchantId} 订单创建失败:`, res);
+                    }
+                },
+                error: function () {
+                    hasError = true;
+                    alert('网络错误，无法创建订单');
+                },
+                complete: function () {
+                    orderCreationCount++;
+
+                    // 当所有订单都创建完成
+                    if (orderCreationCount === totalMerchants) {
+                        // 恢复按钮状态
+                        payBtn.prop('disabled', false).text(originalText);
+
+                        if (!hasError && createdOrders.length > 0) {
+                            // 清除选中的优惠券
+                            localStorage.removeItem('selectedCoupon');
+                            // 清除购物车数据
+                            localStorage.removeItem('currentCart');
+
+                            // 处理多订单支付
+                            processMultiplePayments(createdOrders, selectedPayType);
+                        }
+
+                        // 清空待处理数据
+                        pendingOrderData = null;
+                    }
+                }
+            });
+        });
+    }
 </script>
+
+<style>
+    /* 支付确认弹窗样式 */
+    #paymentConfirmModal .modal-dialog {
+        max-width: 500px;
+        margin: 1.75rem auto;
+    }
+
+    #paymentConfirmModal .modal-header {
+        background-color: #fff;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    #paymentConfirmModal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    #paymentConfirmModal .modal-body {
+        padding: 20px;
+    }
+
+    #paymentConfirmModal h6 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    #confirmDishList {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+    }
+
+    .confirm-dish-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
+
+    .confirm-dish-item:last-child {
+        border-bottom: none;
+    }
+
+    .confirm-dish-name {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .confirm-dish-quantity {
+        font-size: 14px;
+        color: #666;
+        margin: 0 10px;
+    }
+
+    .confirm-dish-price {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ff4d4f;
+        text-align: right;
+    }
+
+    #paymentConfirmModal .border-t {
+        border-top: 1px solid #f0f0f0;
+    }
+
+    /* 支付密码悬浮框样式 */
+    #paymentPasswordModal .modal-dialog {
+        max-width: 400px;
+        margin: 1.75rem auto;
+    }
+
+    #paymentPasswordModal .modal-header {
+        background-color: #fff;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    #paymentPasswordModal .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    #paymentPasswordModal .modal-body {
+        padding: 20px;
+    }
+
+    #paymentPasswordModal .form-label {
+        font-weight: 500;
+        color: #333;
+    }
+
+    #paymentAmount {
+        letter-spacing: 0.5px;
+    }
+
+    #payPassword {
+        font-size: 16px;
+        text-align: center;
+        letter-spacing: 5px;
+    }
+
+    #passwordError {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+
+    #paymentConfirmModal .modal-footer {
+        border-top: 1px solid #f0f0f0;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    #paymentConfirmModal .modal-footer button {
+        min-width: 100px;
+    }
+
+    #paymentConfirmModal .btn-secondary {
+        background-color: #f5f5f5;
+        border-color: #f5f5f5;
+        color: #666;
+    }
+
+    #paymentConfirmModal .btn-secondary:hover {
+        background-color: #e8e8e8;
+        border-color: #e8e8e8;
+        color: #333;
+    }
+
+    #paymentConfirmModal .btn-danger {
+        background-color: #ff4d4f;
+        border-color: #ff4d4f;
+    }
+
+    #paymentConfirmModal .btn-danger:hover {
+        background-color: #ff7875;
+        border-color: #ff7875;
+    }
+
+    /* 自定义滚动条样式 */
+    #confirmDishList::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #confirmDishList::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    #confirmDishList::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    #confirmDishList::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+</style>
 
 <!-- 添加/编辑地址模态框 -->
 <div class="modal fade" id="addressModal" tabindex="-1" aria-labelledby="addressModalLabel" aria-hidden="true">

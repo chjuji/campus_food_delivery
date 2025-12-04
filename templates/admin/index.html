@@ -767,6 +767,9 @@
 
         // 更新订单统计卡片
         function updateOrderStatsCards(summary) {
+            $('#pendingOrders').text(summary.pending_orders);
+            $('#processingOrders').text(summary.processing_orders);
+            $('#deliveredOrders').text(summary.delivered_orders);
             $('#totalOrders').text(summary.total_orders);
             $('#completedOrders').text(summary.completed_orders);
             $('#cancelledOrders').text(summary.cancelled_orders);
@@ -816,7 +819,7 @@
                         <td>¥${order.total_amount.toFixed(2)}</td>
                         <td>¥${order.pay_amount.toFixed(2)}</td>
                         <td>¥${order.discount_amount.toFixed(2)}</td>
-                        <td>${order.pay_type}</td>
+        
                         <td>
                             <span class="badge ${statusClass}">${order.status}</span>
                         </td>

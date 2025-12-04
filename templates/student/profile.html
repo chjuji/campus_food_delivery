@@ -33,10 +33,15 @@
                         <input type="file" id="avatarInput" accept="image/*" style="display: none;">
                     </div>
                 </div>
-                <h5 id="userName" class="mb-1">加载中...</h5>
+                <h5 id="info-name0" class="mb-1">{{ '加载中...' }}</h5>
                 <p class="text-muted mb-3">学生用户</p>
-                <button class="btn btn-primary mb-2" onclick="openEditModal()">编辑信息</button>
-                <button class="btn btn-outline-danger" onclick="changePassword()">修改密码</button>
+                <div class="d-block">
+                    <button class="btn btn-primary mb-2 w-100" onclick="openEditModal()">编辑信息</button>
+                    <button class="btn btn-outline-danger mb-2 w-100" onclick="changePassword()">修改密码</button>
+                    <button class="btn btn-success mb-2 w-100" onclick="openRechargeModal()">充值</button>
+                    <button class="btn btn-warning mb-2 w-100" onclick="openWallet()">卡包</button>
+                    <button class="btn btn-info w-100" onclick="checkPayPasswordStatus()">修改支付密码</button>
+                </div>
             </div>
         </div>
     </div>
@@ -256,6 +261,7 @@
                     }
 
                     // 更新详细信息
+                    $('#info-name0').text(data.name || '未设置');
                     $('#info-name').text(data.name || '未设置');
                     $('#info-id').text(data.student_id || '未设置');
                     $('#info-phone').text(data.phone || '未设置');
@@ -686,6 +692,96 @@
             minute: '2-digit'
         });
     }
+
+    // 打开充值模态框
+    function openRechargeModal() {
+        $('#rechargeAmount').val('');
+        $('#rechargeError').hide();
+
+        // 获取并显示当前余额
+        const currentWallet = parseFloat($('#info-wallet').text().replace('¥', ''));
+        $('#currentBalance').text('¥' + currentWallet.toFixed(2));
+
+        $('#rechargeModal').modal('show');
+    }
+
+    // 执行充值
+    function doRecharge() {
+        const amount = parseFloat($('#rechargeAmount').val().trim());
+
+        // 验证输入（允许负数，用于调试）
+        // if (isNaN(amount)) {
+
+        // 验证输入
+        if (isNaN(amount) || amount <= 0) {
+            $('#rechargeError').text('请输入有效的充值金额').show();
+            return;
+        }
+
+        if (amount > 10000) {
+            $('#rechargeError').text('单次充值金额不能超过10000元').show();
+            return;
+        }
+
+        // 调用后端API进行充值
+        $.ajax({
+            url: '/api/student/wallet/recharge',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ amount: amount }),
+            success: function (response) {
+                if (response.code === 200) {
+                    // 更新前端钱包显示
+                    $('#info-wallet').text('¥' + response.data.new_balance.toFixed(2));
+
+                    // 更新本地存储的用户信息
+                    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+                    userInfo.wallet = response.data.new_balance.toFixed(2);
+                    localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+                    // 关闭模态框并显示成功提示
+                    $('#rechargeModal').modal('hide');
+                    alert(response.msg || '充值成功！钱包余额已更新。');
+                } else {
+                    $('#rechargeError').text(response.msg || '充值失败').show();
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('充值请求失败:', error);
+                $('#rechargeError').text('网络错误，请稍后重试').show();
+            }
+        });
+    }
+
+    // 打开卡包
+    function openWallet() {
+        alert('卡包功能开发中...');
+    }
+
+    // 检查支付密码状态
+    function checkPayPasswordStatus() {
+        $.ajax({
+            url: '/api/student/check-pay-password',
+            type: 'GET',
+            success: function (response) {
+                if (response.code === 200) {
+                    if (response.data.has_pay_password) {
+                        // 已有支付密码，跳转到修改页面
+                        window.location.href = '/student/change-pay-password';
+                    } else {
+                        // 没有支付密码，跳转到设置初始支付密码页面
+                        window.location.href = '/student/set-pay-password';
+                    }
+                } else {
+                    alert(response.msg || '检查支付密码状态失败');
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('检查支付密码状态请求失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        });
+    }
 </script>
 
 <!-- 编辑信息模态框 -->
@@ -802,6 +898,34 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-primary" onclick="saveAddress()">保存地址</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 充值模态框 -->
+<div class="modal fade" id="rechargeModal" tabindex="-1" aria-labelledby="rechargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rechargeModalLabel">钱包充值</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="rechargeAmount" class="form-label">充值金额</label>
+                    <input type="number" class="form-control" id="rechargeAmount" placeholder="请输入充值金额" min="0.01"
+                        step="0.01">
+                    <div class="form-text text-muted">支持0.01元及以上金额充值</div>
+                    <div id="rechargeError" class="text-danger mt-1" style="display: none;"></div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <p class="mb-0"><i class="bi bi-info-circle"></i> 当前余额: <span id="currentBalance"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="doRecharge()">确认充值</button>
             </div>
         </div>
     </div>

@@ -225,7 +225,7 @@ def create_app():
         model_modules = [
             'models.student', 'models.merchant', 'models.order', 'models.dish',
             'models.cart', 'models.comment', 'models.complaint', 'models.coupon',
-            'models.platform_config', 'models.address', 'models.admin'
+            'models.platform_config', 'models.address'
         ]
         for m in model_modules:
             try:
@@ -257,14 +257,13 @@ def create_app():
                             {'config_key': 'platform_logo', 'config_value': '', 'config_type': 'string', 'description': '平台Logo', 'category': 'basic'},
                             {'config_key': 'contact_email', 'config_value': 'admin@campusfood.com', 'config_type': 'string', 'description': '联系邮箱', 'category': 'basic'},
                             {'config_key': 'platform_desc', 'config_value': '为校园师生提供便捷的餐饮服务', 'config_type': 'string', 'description': '平台描述', 'category': 'basic'},
+                            {'config_key': 'delivery_fee_earnings', 'config_value': '0', 'config_type': 'number', 'description': '平台配送费总收入', 'category': 'basic'},
                             
                             # 订单设置
-                            {'config_key': 'min_order_amount', 'config_value': '20', 'config_type': 'number', 'description': '最低起送金额', 'category': 'order'},
                             {'config_key': 'default_delivery_fee', 'config_value': '5', 'config_type': 'number', 'description': '默认配送费', 'category': 'order'},
                             
                             # 系统设置
-                            {'config_key': 'system_maintenance', 'config_value': 'false', 'config_type': 'boolean', 'description': '系统维护中', 'category': 'system'},
-                            {'config_key': 'cache_expiration', 'config_value': '300', 'config_type': 'number', 'description': '缓存过期时间(秒)', 'category': 'system'}
+                            {'config_key': 'system_maintenance', 'config_value': 'false', 'config_type': 'boolean', 'description': '系统维护中', 'category': 'system'}
                         ]
                         
                         # 批量插入默认配置
@@ -411,10 +410,28 @@ def create_app():
     #     except Exception as e:
     #         print('检查 engine 表名时出错：', e)
     
-    # 首页路由（测试用） -> 渲染 templates/home/index.html
+    # 首页路由 -> 渲染 templates/home/index.html
     @app.route('/')
     def index():
-        return render_template('home/index.html')
+        from models.platform_config import PlatformConfig
+        
+        # 获取平台配置信息
+        platform_name = PlatformConfig.get_by_key('platform_name')
+        contact_phone = PlatformConfig.get_by_key('contact_phone')
+        platform_logo = PlatformConfig.get_by_key('platform_logo')
+        contact_email = PlatformConfig.get_by_key('contact_email')
+        platform_desc = PlatformConfig.get_by_key('platform_desc')
+        
+        # 构建配置字典
+        platform_info = {
+            'platform_name': platform_name.config_value if platform_name else '校园餐饮平台',
+            'contact_phone': contact_phone.config_value if contact_phone else '',
+            'platform_logo': platform_logo.config_value if platform_logo else '',
+            'contact_email': contact_email.config_value if contact_email else '',
+            'platform_desc': platform_desc.config_value if platform_desc else '为校园师生提供便捷的餐饮服务'
+        }
+        
+        return render_template('home/index.html', platform_info=platform_info)
     
     return app
 

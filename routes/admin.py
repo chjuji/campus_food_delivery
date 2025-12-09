@@ -1,8 +1,12 @@
 from flask import Blueprint, request, jsonify, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from werkzeug.utils import secure_filename
 from models.merchant import Merchant
 from models.platform_config import PlatformConfig
+from models.coupon import Coupon, UserCoupon
 from extensions import db
+import os
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -86,6 +90,72 @@ def get_merchants():
     except Exception as e:
         return jsonify({'code': 500, 'msg': f'查询失败：{str(e)}'})
 
+# 优惠券管理接口 - 获取用户领取的所有优惠券
+@admin_bp.route('/coupons')
+@jwt_required()
+def get_coupons():
+    try:
+        # 验证管理员权限
+        identity_str = get_jwt_identity()
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 查询所有用户领取的优惠券，关联查询优惠券信息和用户信息
+        from models.student import Student
+        user_coupons = UserCoupon.query.join(Coupon).join(Student).all()
+        
+        # 转换为JSON可序列化的列表
+        data = []
+        for user_coupon in user_coupons:
+            data.append({
+                'id': user_coupon.id,  # UserCoupon的ID
+                'student_id': user_coupon.student_id,
+                'student_name': user_coupon.student.name if hasattr(user_coupon, 'student') and user_coupon.student else '',
+                'coupon_id': user_coupon.coupon_id,
+                'coupon_name': user_coupon.coupon.coupon_name if hasattr(user_coupon, 'coupon') else '',
+                'discount_amount': user_coupon.coupon.value if hasattr(user_coupon, 'coupon') else 0,
+                'min_spend': user_coupon.coupon.min_spend if hasattr(user_coupon, 'coupon') else 0,
+                'is_used': user_coupon.is_used,
+                'get_time': user_coupon.get_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'use_time': user_coupon.use_time.strftime('%Y-%m-%d %H:%M:%S') if user_coupon.use_time else ''
+            })
+        
+        return jsonify({'code': 200, 'data': data})
+    except Exception as e:
+        return jsonify({'code': 500, 'msg': f'获取优惠券失败：{str(e)}'})
+
+# 优惠券管理接口 - 删除用户领取的优惠券
+@admin_bp.route('/coupons/<int:user_coupon_id>', methods=['DELETE'])
+@jwt_required()
+def delete_coupon(user_coupon_id):
+    try:
+        # 验证管理员权限
+        identity_str = get_jwt_identity()
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 查找用户领取的优惠券记录
+        user_coupon = UserCoupon.query.get(user_coupon_id)
+        if not user_coupon:
+            return jsonify({'code': 404, 'msg': '优惠券记录不存在'}), 404
+        
+        # 删除用户领取的优惠券记录
+        db.session.delete(user_coupon)
+        db.session.commit()
+        
+        return jsonify({'code': 200, 'msg': '优惠券删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'code': 500, 'msg': f'删除优惠券失败：{str(e)}'})
+
 # 待审核商户列表接口（供前端AJAX调用）
 # 平台设置接口 - 获取所有配置
 @admin_bp.route('/settings')
@@ -165,6 +235,89 @@ def update_platform_settings():
     except Exception as e:
         db.session.rollback()
         return jsonify({'code': 500, 'msg': f'更新失败：{str(e)}'})
+
+# 上传平台Logo
+@admin_bp.route('/upload_logo', methods=['POST'])
+@jwt_required()
+def upload_logo():
+    try:
+        identity_str = get_jwt_identity()
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 检查是否有文件上传
+        if 'file' not in request.files:
+            return jsonify({'code': 400, 'msg': '未找到上传文件'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'code': 400, 'msg': '未选择文件'}), 400
+        
+        # 检查文件类型
+        if not allowed_file(file.filename):
+            return jsonify({'code': 400, 'msg': '不支持的文件类型'}), 400
+        
+        # 生成唯一文件名
+        filename = secure_filename(file.filename)
+        unique_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+        
+        # 保存文件路径 - 使用相对路径构建，避免循环导入
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_dir)
+        upload_dir = os.path.join(project_root, 'static', 'uploads', 'system')
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # 保存文件
+        file.save(file_path)
+        
+        # 更新平台Logo配置
+        from models.platform_config import PlatformConfig
+        logo_config = PlatformConfig.query.filter_by(config_key='platform_logo').first()
+        
+        # 构建相对路径
+        relative_path = f"/static/uploads/system/{unique_filename}"
+        
+        if logo_config:
+            # 删除旧文件
+            if logo_config.config_value:
+                # 使用相对路径构建旧文件路径，避免循环导入
+                old_file_path = os.path.join(project_root, logo_config.config_value.lstrip('/'))
+                if os.path.exists(old_file_path):
+                    os.remove(old_file_path)
+            
+            logo_config.config_value = relative_path
+        else:
+            # 创建新配置（如果不存在）
+            logo_config = PlatformConfig(
+                config_key='platform_logo',
+                config_value=relative_path,
+                config_type='string',
+                description='平台Logo',
+                category='basic'
+            )
+        
+        db.session.add(logo_config)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200, 
+            'msg': 'Logo上传成功',
+            'data': {
+                'logo_path': relative_path
+            }
+        })
+    except Exception as e:
+        return jsonify({'code': 500, 'msg': f'上传失败：{str(e)}'}), 500
+
+# 允许的文件扩展名
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @admin_bp.route('/pending_merchants')
 @jwt_required()  # 仅管理员可访问
@@ -593,9 +746,18 @@ def get_complaints():
         # 转换为JSON可序列化的列表
         data = []
         for complaint in complaints:
+            # 获取订单号
+            order_no = ''
+            if complaint.order_id:
+                from models.order import Order
+                order = Order.query.get(complaint.order_id)
+                if order:
+                    order_no = order.order_no
+            
             data.append({
                 'id': complaint.id,
                 'order_id': complaint.order_id,
+                'order_no': order_no,  # 新增订单号字段
                 'student_id': complaint.student_id,
                 'content': complaint.content,
                 'status': complaint.status,

@@ -41,3 +41,36 @@ class PlatformConfig(db.Model):
     def get_all(cls):
         """获取所有配置"""
         return cls.query.all()
+    
+    @classmethod
+    def get_delivery_fee_earnings(cls):
+        """获取平台配送费收入配置"""
+        config = cls.get_by_key('delivery_fee_earnings')
+        return float(config.config_value) if config else 0.00
+    
+    @classmethod
+    def update_delivery_fee_earnings(cls, amount):
+        """更新平台配送费收入配置"""
+        config = cls.get_by_key('delivery_fee_earnings')
+        if config:
+            config.config_value = str(amount)
+            db.session.commit()
+            return config
+        return None
+    
+    @classmethod
+    def add_wallet_config(cls, key, value, description):
+        """添加钱包相关配置"""
+        existing = cls.get_by_key(key)
+        if not existing:
+            new_config = cls(
+                config_key=key,
+                config_value=str(value),
+                config_type='number',
+                description=description,
+                category='basic'
+            )
+            db.session.add(new_config)
+            db.session.commit()
+            return new_config
+        return existing

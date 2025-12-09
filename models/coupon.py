@@ -15,6 +15,7 @@ class Coupon(db.Model):
     start_time = db.Column(db.DateTime, nullable=False, comment='开始时间')
     end_time = db.Column(db.DateTime, nullable=False, comment='结束时间')
     create_time = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
+    is_active = db.Column(db.Boolean, default=False, comment='是否激活')
 
     # 关联用户领取记录
     user_coupons = db.relationship('UserCoupon', backref='coupon', lazy=True)

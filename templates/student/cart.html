@@ -95,6 +95,53 @@
 
     </div>
 </div>
+
+<style>
+    /* 优惠券样式 */
+    .coupon-item {
+        transition: all 0.3s ease;
+    }
+
+    .coupon-item:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .coupon-amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+
+    .coupon-condition {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .coupon-name {
+        font-weight: bold;
+        font-size: 1rem;
+        margin-bottom: 4px;
+    }
+
+    .coupon-type {
+        font-size: 0.8rem;
+        color: #0d6efd;
+        margin-bottom: 2px;
+    }
+
+    .coupon-merchant {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 3px;
+    }
+
+    .coupon-expire {
+        font-size: 0.8rem;
+        color: #888;
+        margin-top: 2px;
+    }
+</style>
 {% endblock %}
 
 {% block modals %}
@@ -442,8 +489,33 @@
 
     // 更新页面上的配送费显示
     function updateDeliveryFeeDisplay() {
+        console.log('updateDeliveryFeeDisplay函数被调用');
+        console.log('当前配送费:', currentDeliveryFee);
+        // 获取当前购物车数据并按商户分组
+        let deliveryFee = currentDeliveryFee;
+        const currentCart = JSON.parse(localStorage.getItem('currentCart')) || [];
+        console.log('当前购物车数据:', currentCart);
+        if (currentCart.length > 0) {
+            const itemsByMerchant = {};
+            currentCart.forEach(item => {
+                if (item && item.dish) {
+                    const merchantId = item.dish.merchant_id;
+                    if (!itemsByMerchant[merchantId]) {
+                        itemsByMerchant[merchantId] = [];
+                    }
+                    itemsByMerchant[merchantId].push(item);
+                }
+            });
+            console.log('按商户分组的数据:', itemsByMerchant);
+            // 根据商户数量计算配送费
+            const totalMerchants = Object.keys(itemsByMerchant).length;
+            console.log('商户数量:', totalMerchants);
+            deliveryFee = currentDeliveryFee * totalMerchants;
+            console.log('计算后的配送费:', deliveryFee);
+        }
+
         // 更新结算区域的配送费显示
-        const formattedFee = currentDeliveryFee.toFixed(2);
+        const formattedFee = deliveryFee.toFixed(2);
         $('#deliveryFeeDisplay').text(`¥${formattedFee}`);
         // 更新优惠券模态框中的配送费显示
         $('#couponModal .text-sm.text-muted:contains(配送费)').text(`配送费：¥${formattedFee}`);
@@ -530,10 +602,14 @@
                 if (res && res.code === 200 && res.data) {
                     // 正确处理后端返回的数据结构，购物车数组在res.data.items中
                     const cartItems = res.data.items || [];
+                    // 将购物车数据保存到localStorage，以便updateDeliveryFeeDisplay函数使用
+                    localStorage.setItem('currentCart', JSON.stringify(cartItems));
                     renderCart(cartItems);
                 } else {
                     console.error('获取购物车失败：', res ? res.msg : '未知错误');
                     alert('获取购物车失败，请稍后重试');
+                    // 即使获取购物车失败，也更新配送费显示
+                    updateDeliveryFeeDisplay();
                 }
             },
             error: function () {
@@ -549,35 +625,13 @@
                         console.error('解析本地购物车数据失败：', e);
                     }
                 }
+                // 即使API失败，也更新配送费显示
+                updateDeliveryFeeDisplay();
             }
         });
     }
 
-    // 渲染购物车商品列表
-    function renderCart(cartItems) {
-        // 处理空购物车情况
-        if (!cartItems || cartItems.length === 0) {
-            $('#cartList').html('<div class="text-center text-muted py-4">购物车为空</div>');
-            $('#totalPrice').text('¥0.00');
-            $('#finalPrice').text('¥5.00');
-            $('#payBtn').prop('disabled', true);
-            return;
-        }
 
-        let html = '';
-        let totalPrice = 0;
-
-
-        // 保存购物车数据到localStorage
-        saveCartToLocalStorage(cartItems);
-
-        // 更新DOM
-        $('#cartList').html(html);
-        $('#totalPrice').text('¥' + totalPrice.toFixed(2));
-        // 使用全局配送费变量计算最终价格
-        updatePrices();
-        $('#payBtn').prop('disabled', false);
-    }
 
     // 更新购物车商品数量
     function updateQuantity(cartId, newQuantity) {
@@ -624,13 +678,6 @@
     function removeFromCart(cartId) {
         if (!confirm('确定要从购物车删除该商品吗？')) return;
 
-        // 添加加载状态
-        // const button = event ? $(event.target) : null;
-        // if (button) {
-        //     const originalText = button.text();
-        //     button.prop('disabled', true).text('删除中...');
-        // }
-
         const token = UserAuthManager.getToken();
         $.ajax({
             url: `/api/student/cart/${cartId}`,
@@ -638,19 +685,8 @@
             headers: { 'Authorization': `Bearer ${token}` },
             success: function (res) {
                 if (res && res.code === 200) {
-                    // 删除成功后，为了更好的用户体验，可以先从DOM中移除该项，然后再刷新购物车
-                    if (button) {
-                        const cartItem = button.closest('.cart-item');
-                        if (cartItem) {
-                            cartItem.fadeOut('fast', function () {
-                                loadCart(); // 完全移除后刷新购物车以更新总价
-                            });
-                        } else {
-                            loadCart();
-                        }
-                    } else {
-                        loadCart();
-                    }
+                    // 删除成功后刷新购物车
+                    loadCart();
                 } else {
                     alert('删除失败：' + (res ? res.msg : '未知错误'));
                 }
@@ -662,22 +698,12 @@
                     const currentCart = JSON.parse(localStorage.getItem('currentCart') || '[]');
                     const updatedCart = currentCart.filter(item => item.id !== cartId);
                     localStorage.setItem('currentCart', JSON.stringify(updatedCart));
-                    if (button) {
-                        const cartItem = button.closest('.cart-item');
-                        if (cartItem) {
-                            cartItem.fadeOut('fast');
-                        }
-                    }
+                    // 刷新购物车
+                    loadCart();
                 } catch (e) {
                     console.error('从本地购物车删除失败：', e);
                 }
-            },
-            // complete: function () {
-            //     // 恢复按钮状态
-            //     if (button) {
-            //         button.prop('disabled', false).text(originalText);
-            //     }
-            // }
+            }
         });
     }
 
@@ -880,31 +906,55 @@
 
             console.log('当前选中的优惠券:', selectedCoupon);
 
+            // 按商家ID计算购物车中每个商家的商品总价
+            const merchantTotals = {};
+            try {
+                const currentCart = JSON.parse(localStorage.getItem('currentCart')) || [];
+                currentCart.forEach(item => {
+                    if (item && item.dish && item.dish.merchant_id) {
+                        const merchantId = item.dish.merchant_id;
+                        const itemTotal = item.dish.price * item.quantity;
+                        merchantTotals[merchantId] = (merchantTotals[merchantId] || 0) + itemTotal;
+                    }
+                });
+                console.log('按商家ID计算的商品总价:', merchantTotals);
+            } catch (e) {
+                console.error('计算商家商品总价时出错:', e);
+            }
+
             coupons.forEach(coupon => {
                 try {
                     console.log('处理优惠券:', coupon.id, coupon.coupon_name || coupon.name);
                     const isSelected = selectedCoupon && selectedCoupon.id === coupon.id;
                     const validTotalPrice = coupon.min_spend || 0;
-                    const currentTotal = parseFloat($('#totalPrice').text().replace('¥', '')) || 0;
-                    const isAvailable = currentTotal >= validTotalPrice;
 
-                    console.log(`优惠券 ${coupon.id}: 选中状态=${isSelected}, 可用状态=${isAvailable}, 当前总价=${currentTotal}, 最低消费=${validTotalPrice}`);
+                    // 根据优惠券的商家ID计算对应商家的商品总价
+                    const couponMerchantId = coupon.merchant_id;
+                    const merchantTotal = merchantTotals[couponMerchantId] || 0;
+
+                    // 优惠券是否可用：必须有该商家的商品，且该商家的商品总价满足最低消费要求
+                    const hasMerchantItems = merchantTotal > 0;
+                    const isAvailable = hasMerchantItems && merchantTotal >= validTotalPrice;
+
+                    console.log(`优惠券 ${coupon.id}: 选中状态=${isSelected}, 可用状态=${isAvailable}, 商家${couponMerchantId}总价=${merchantTotal}, 最低消费=${validTotalPrice}`);
 
                     html += `
-                            <div class="coupon-item p-3 mb-3 border rounded ${isSelected ? 'border-success bg-success-subtle' : 'border-gray-200'} ${!isAvailable ? 'opacity-50' : ''}" data-id="${coupon.id}">
+                            <div class="coupon-item p-3 mb-3 border rounded bg-white shadow-sm ${isSelected ? 'border-success bg-success-subtle' : 'border-gray-200'} ${!isAvailable ? 'opacity-50' : ''}" data-id="${coupon.id}">
                                 <div class="row align-items-center">
                                     <div class="col-md-3 text-center">
-                                        <span class="text-danger fs-3 font-bold">¥${coupon.discount_amount || coupon.value}</span>
-                                        <div class="text-xs text-muted mt-1">满${validTotalPrice}元可用</div>
+                                        <div class="coupon-amount">${coupon.type === '折扣' ? `${(coupon.discount_amount || coupon.value)}折` : `¥${(coupon.discount_amount || coupon.value)}`}</div>
+                                        <div class="coupon-condition">满¥${validTotalPrice}可用</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <h6>${coupon.coupon_name || coupon.name}</h6>
-                                        <p class="text-xs text-muted">有效期至：${coupon.expire_date || '未知'}</p>
+                                        <div class="coupon-name">${coupon.coupon_name || coupon.name}</div>
+                                        <div class="coupon-type">${coupon.type === '折扣' ? '折扣券' : coupon.type === '满减' ? '满减券' : '无门槛券'}</div>
+                                        <div class="coupon-merchant">商家: ${coupon.merchant_name || '未知商家'}</div>
+                                        <div class="coupon-expire">有效期至: ${coupon.expire_date || '未知'}</div>
                                     </div>
                                     <div class="col-md-3 text-end">
-                                    <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'} select-coupon-btn"
-                                        onclick="selectCoupon(${coupon.id}, '${coupon.coupon_name || coupon.name}', ${coupon.discount_amount || coupon.value})"
-                                        ${!isAvailable ? 'disabled title="未满足最低消费条件"' : ''}>
+                                    <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'} select-coupon-btn" 
+                                        onclick="selectCoupon(${coupon.id}, '${coupon.coupon_name || coupon.name}', ${coupon.discount_amount || coupon.value || 0}, '${coupon.type}', ${coupon.min_spend || 0}, ${coupon.merchant_id})" 
+                                        ${!isAvailable ? 'disabled title="未满足最低消费条件或没有对应商家商品"' : ''}>
                                         ${isSelected ? '已选择' : '选择'}
                                     </button>
                                 </div>
@@ -1188,14 +1238,17 @@
     }
 
     // 选择优惠券
-    function selectCoupon(id, name, discountAmount) {
+    function selectCoupon(id, name, value, type, minSpend, merchantId) {
         try {
             // 构建优惠券对象
             const coupon = {
                 id: id,
                 name: name,
                 coupon_name: name,
-                discount_amount: discountAmount
+                value: parseFloat(value) || 0,
+                type: type || '满减',
+                min_spend: parseFloat(minSpend) || 0,
+                merchant_id: merchantId
             };
 
             // 调试信息
@@ -1244,26 +1297,75 @@
     function updatePrices() {
         const totalPrice = parseFloat($('#totalPrice').text().replace('¥', '')) || 0;
 
-        // 使用全局配送费变量
-        const deliveryFee = currentDeliveryFee;
+        // 获取当前购物车数据并按商户分组
+        let deliveryFee = currentDeliveryFee;
+        const currentCart = JSON.parse(localStorage.getItem('currentCart')) || [];
+        if (currentCart.length > 0) {
+            const itemsByMerchant = {};
+            currentCart.forEach(item => {
+                if (item && item.dish) {
+                    const merchantId = item.dish.merchant_id;
+                    if (!itemsByMerchant[merchantId]) {
+                        itemsByMerchant[merchantId] = [];
+                    }
+                    itemsByMerchant[merchantId].push(item);
+                }
+            });
+            // 根据商户数量计算配送费
+            const totalMerchants = Object.keys(itemsByMerchant).length;
+            deliveryFee = currentDeliveryFee * totalMerchants;
+        }
 
         // 检查是否有选中的优惠券
         let discount = 0;
+        let discountText = '';
         const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
 
         if (selectedCoupon) {
-            const minSpend = selectedCoupon.min_spend || 0;
-            if (totalPrice >= minSpend) {
-                discount = selectedCoupon.discount_amount;
-                // 确保优惠金额不超过总价
-                if (discount > totalPrice) {
-                    discount = totalPrice;
+            // 获取优惠券的商家ID
+            const couponMerchantId = selectedCoupon.merchant_id;
+
+            // 计算优惠券对应商家的商品总价
+            let merchantTotal = 0;
+            const currentCart = JSON.parse(localStorage.getItem('currentCart')) || [];
+            currentCart.forEach(item => {
+                if (item && item.dish && item.dish.merchant_id === couponMerchantId) {
+                    merchantTotal += item.dish.price * item.quantity;
+                }
+            });
+
+            const minSpend = parseFloat(selectedCoupon.min_spend) || 0;
+
+            // 只有当对应商家的商品总价满足最低消费要求时才应用优惠券
+            if (merchantTotal >= minSpend && merchantTotal > 0) {
+                // 根据优惠券类型计算折扣
+                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                    // 折扣券，如9表示9折，折扣金额为该商家商品总价的10%
+                    const discountRate = couponValue / 10;
+                    discount = merchantTotal * (1 - discountRate);
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discount > merchantTotal) {
+                        discount = merchantTotal;
+                    }
+                    // 显示为-XX%
+                    const discountPercent = Math.round((1 - discountRate) * 100);
+                    discountText = `- ${discountPercent}%`;
+                } else {
+                    // 满减券或无门槛券，直接显示金额
+                    discount = couponValue;
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discount > merchantTotal) {
+                        discount = merchantTotal;
+                    }
+                    // 显示为-¥XX
+                    discountText = `-¥${discount.toFixed(2)}`;
                 }
                 $('#discountRow').show();
-                $('#discountAmount').text(`-¥${discount.toFixed(2)}`);
-                $('#discountAmountRight').text(`-¥${discount.toFixed(2)}`);
+                $('#discountAmount').text(discountText);
+                $('#discountAmountRight').text(discountText);
             } else {
-                // 未满足最低消费，不应用优惠
+                // 未满足最低消费或没有对应商家的商品，不应用优惠
                 $('#discountRow').hide();
             }
         } else {
@@ -1271,7 +1373,7 @@
         }
 
         // 计算最终价格
-        const finalPrice = totalPrice + deliveryFee - discount;
+        const finalPrice = Math.max(0, totalPrice + deliveryFee - discount);
         $('#finalPrice').text(`¥${finalPrice.toFixed(2)}`);
     }
 
@@ -1345,6 +1447,8 @@
 
         // 更新价格（包含优惠）
         updatePrices();
+        // 更新配送费显示
+        updateDeliveryFeeDisplay();
     }
 
     // 加载用户可用的优惠券数量
@@ -1529,40 +1633,59 @@
     // }
 
     // 处理单个支付流程
-    function processPayment(orderId, amount, payType) {
+    function processPayment(orderId, amount, payType, couponsAdded = 0) {
         // 模拟支付过程
         console.log(`开始支付订单 ${orderId}，金额：${amount}，支付方式：${payType}`);
 
         // 这里应该调用实际的支付接口，现在简单模拟
         setTimeout(() => {
             // 模拟支付成功
-            alert('支付成功！');
+            let message = '支付成功！';
+
+            // 如果有优惠券发放，添加提示
+            if (couponsAdded > 0) {
+                message += '\n恭喜获得优惠券！';
+            }
+
+            alert(message);
             // 跳转到订单页面
             window.location.href = '/student/orders';
         }, 1500);
     }
 
     // 处理多订单支付流程
-    function processMultiplePayments(orders, payType) {
+    function processMultiplePayments(orders, payType, couponsAdded = 0, isPaymentSuccess = true) {
         // 计算总支付金额
         const totalAmount = orders.reduce((sum, order) => sum + order.pay_amount, 0);
 
         console.log('开始处理多订单支付:', orders);
         console.log(`总支付金额: ${totalAmount}，支付方式: ${payType}`);
 
-        // 这里应该调用实际的支付接口，现在简单模拟
-        // 在实际场景中，这里可能需要调用批量支付接口或依次调用支付接口
-        setTimeout(() => {
-            // 模拟所有支付成功
-            alert(`多商户订单支付成功！共支付 ${totalAmount} 元，已为 ${orders.length} 个商户创建了订单。`);
+        let message;
+
+        if (isPaymentSuccess) {
+            // 支付成功
+            message = `订单支付成功！`;
+
+            // 如果有优惠券发放，添加提示
+            if (couponsAdded > 0) {
+                message += `\n恭喜获得 ${couponsAdded} 张优惠券！请前往卡包查看`;
+            }
+
+            alert(message);
 
             // 记录支付成功的订单ID，便于后续查询
             const successOrderIds = orders.map(order => order.order_id).join(', ');
             console.log(`支付成功的订单ID: ${successOrderIds}`);
 
-            // 跳转到订单页面
-            window.location.href = '/student/orders';
-        }, 1500);
+        } else {
+            // 支付被取消或失败，订单已创建到待支付列表
+            message = `订单创建成功！\n您的订单已保存到待支付列表，您可以在订单页面继续完成支付`;
+            alert(message);
+        }
+
+        // 无论支付结果如何，都跳转到订单页面
+        window.location.href = '/student/orders';
     }
 
     // 保存当前购物车数据到localStorage
@@ -1597,25 +1720,39 @@
 
         // 计算并显示价格信息
         const totalPrice = cartItems.reduce((sum, item) => sum + (item.dish.price * item.quantity), 0);
-        const deliveryFee = currentDeliveryFee; // 使用全局配送费变量
+        // 根据商户数量计算配送费
+        const totalMerchants = Object.keys(itemsByMerchant).length;
+        const deliveryFee = currentDeliveryFee * totalMerchants;
         const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
         let discountAmount = 0;
+        let discountText = '';
 
         if (selectedCoupon) {
             // 应用优惠券折扣
-            if (selectedCoupon.type === 'full_reduction') {
-                if (totalPrice >= selectedCoupon.min_amount) {
-                    discountAmount = selectedCoupon.discount_value;
+            if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                const discountRate = couponValue / 10;
+                discountAmount = totalPrice * (1 - discountRate);
+                // 确保优惠金额不超过总价
+                if (discountAmount > totalPrice) {
+                    discountAmount = totalPrice;
                 }
-            } else if (selectedCoupon.type === 'no_threshold') {
-                discountAmount = selectedCoupon.discount_value;
-            } else if (selectedCoupon.type === 'discount') {
-                discountAmount = totalPrice * (1 - selectedCoupon.discount_value / 100);
+                // 显示为-XX%
+                const discountPercent = Math.round((1 - discountRate) * 100);
+                discountText = `- ${discountPercent}%`;
+            } else if (selectedCoupon.type === 'full_reduction' || selectedCoupon.type === 'no_threshold') {
+                discountAmount = selectedCoupon.value;
+                // 确保优惠金额不超过总价
+                if (discountAmount > totalPrice) {
+                    discountAmount = totalPrice;
+                }
+                // 显示为-¥XX
+                discountText = `-¥${discountAmount.toFixed(2)}`;
             }
 
             // 显示优惠信息
             $('#confirmDiscountRow').show();
-            $('#confirmDiscountAmount').text(`-¥${discountAmount.toFixed(2)}`);
+            $('#confirmDiscountAmount').text(discountText);
         } else {
             // 隐藏优惠信息
             $('#confirmDiscountRow').hide();
@@ -1688,21 +1825,24 @@
 
         // 计算实付金额
         const cartItems = pendingOrderData.cartItems;
+        const itemsByMerchant = pendingOrderData.itemsByMerchant;
         const totalPrice = cartItems.reduce((sum, item) => sum + (item.dish.price * item.quantity), 0);
-        const deliveryFee = currentDeliveryFee; // 使用全局配送费变量
+        // 根据商户数量计算配送费
+        const totalMerchants = Object.keys(itemsByMerchant).length;
+        const deliveryFee = currentDeliveryFee * totalMerchants;
         const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
         let discountAmount = 0;
 
         if (selectedCoupon) {
             // 应用优惠券折扣
-            if (selectedCoupon.type === 'full_reduction') {
-                if (totalPrice >= selectedCoupon.min_amount) {
-                    discountAmount = selectedCoupon.discount_value;
+            if (selectedCoupon.type === 'full_reduction' || selectedCoupon.type === 'no_threshold') {
+                const minSpend = parseFloat(selectedCoupon.min_spend) || 0;
+                if (totalPrice >= minSpend) {
+                    discountAmount = selectedCoupon.value || selectedCoupon.discount_amount || 0;
                 }
-            } else if (selectedCoupon.type === 'no_threshold') {
-                discountAmount = selectedCoupon.discount_value;
-            } else if (selectedCoupon.type === 'discount') {
-                discountAmount = totalPrice * (1 - selectedCoupon.discount_value / 100);
+            } else if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                discountAmount = totalPrice * (1 - couponValue / 10);
             }
         }
 
@@ -1735,21 +1875,30 @@
 
         // 获取实付金额
         const cartItems = pendingOrderData.cartItems;
+        const itemsByMerchant = pendingOrderData.itemsByMerchant;
         const totalPrice = cartItems.reduce((sum, item) => sum + (item.dish.price * item.quantity), 0);
-        const deliveryFee = currentDeliveryFee; // 使用全局配送费变量
+        // 根据商户数量计算配送费
+        const totalMerchants = Object.keys(itemsByMerchant).length;
+        const deliveryFee = currentDeliveryFee * totalMerchants;
         const selectedCoupon = JSON.parse(localStorage.getItem('selectedCoupon')) || null;
         let discountAmount = 0;
 
         if (selectedCoupon) {
-            // 应用优惠券折扣
-            if (selectedCoupon.type === 'full_reduction') {
-                if (totalPrice >= selectedCoupon.min_amount) {
-                    discountAmount = selectedCoupon.discount_value;
+            // 应用优惠券折扣（只对菜品费用进行折扣）
+            if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                const discountRate = couponValue / 10;
+                discountAmount = totalPrice * (1 - discountRate);
+                // 确保优惠金额不超过总价
+                if (discountAmount > totalPrice) {
+                    discountAmount = totalPrice;
                 }
-            } else if (selectedCoupon.type === 'no_threshold') {
-                discountAmount = selectedCoupon.discount_value;
-            } else if (selectedCoupon.type === 'discount') {
-                discountAmount = totalPrice * (1 - selectedCoupon.discount_value / 100);
+            } else if (selectedCoupon.type === 'full_reduction' || selectedCoupon.type === 'no_threshold') {
+                discountAmount = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                // 确保优惠金额不超过总价
+                if (discountAmount > totalPrice) {
+                    discountAmount = totalPrice;
+                }
             }
         }
 
@@ -1848,6 +1997,10 @@
         let orderCreationCount = 0;
         const totalMerchants = Object.keys(itemsByMerchant).length;
         let hasError = false;
+        // 记录优惠券发放数量
+        let totalCouponsAdded = 0;
+        // 根据订单状态判断支付是否成功
+        const isPaymentSuccess = status === '待接单';
 
         // 为每个商户创建单独的订单
         Object.keys(itemsByMerchant).forEach(merchantId => {
@@ -1875,8 +2028,15 @@
                         createdOrders.push({
                             order_id: res.data.order_id,
                             pay_amount: res.data.pay_amount,
-                            merchant_id: merchantId
+                            merchant_id: merchantId,
+                            status: status // 添加订单状态
                         });
+
+                        // 检查是否有优惠券发放
+                        if (res.coupons_added && res.coupons_added > 0) {
+                            totalCouponsAdded += res.coupons_added;
+                        }
+
                         console.log(`商户 ${merchantId} 订单创建成功:`, res.data);
                     } else {
                         hasError = true;
@@ -1901,9 +2061,16 @@
                             localStorage.removeItem('selectedCoupon');
                             // 清除购物车数据
                             localStorage.removeItem('currentCart');
+                            // 清空订单备注信息
+                            $('#orderRemark').val('');
+                            localStorage.removeItem('orderRemark');
+                            // 清空选中的地址信息
+                            localStorage.removeItem('selectedAddress');
+                            // 更新页面上的地址显示
+                            $('#selectedAddressText').text('请选择收货地址');
 
                             // 处理多订单支付
-                            processMultiplePayments(createdOrders, selectedPayType);
+                            processMultiplePayments(createdOrders, selectedPayType, totalCouponsAdded, isPaymentSuccess);
                         }
 
                         // 清空待处理数据

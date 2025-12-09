@@ -251,7 +251,7 @@
             html += `
                     \u003cdiv class="order-item"\u003e
                         \u003cdiv class="order-header d-flex justify-content-between align-items-center"\u003e
-                            \u003cspan\u003e订单号：${order.order_id}\u003c/span\u003e
+                            \u003cspan\u003e订单号：${order.order_no}\u003c/span\u003e
                             \u003cspan class="status-badge ${statusInfo.class}"\u003e${statusInfo.text}\u003c/span\u003e
                         \u003c/div\u003e
                         \u003cdiv class="order-body"\u003e
@@ -276,7 +276,7 @@
                         \u003cdiv class="order-footer d-flex justify-content-between align-items-center"\u003e
                             \u003cspan\u003e下单时间：${formatDate(order.created_at)}\u003c/span\u003e
                             \u003cdiv class="d-flex gap-2"\u003e
-                                \u003cspan class="text-danger fw-bold"\u003e总计：¥${order.total_amount.toFixed(2)}\u003c/span\u003e
+                                \u003cspan class="text-danger fw-bold"\u003e总计：¥${order.pay_amount.toFixed(2)}\u003c/span\u003e
                                 \u003cbutton class="btn btn-sm btn-outline-primary" onclick="viewOrderDetail('${order.order_id}')"\u003e查看详情\u003c/button\u003e
                                 ${getStatusActions(order.status, order.order_id)}
                                 \u003cbutton class="btn btn-sm btn-outline-danger" onclick="deleteOrder('${order.order_id}')"\u003e删除\u003c/button\u003e
@@ -542,7 +542,14 @@
                 if (res && res.code === 200) {
                     // 支付成功
                     $('#paymentPasswordModal').modal('hide');
-                    alert('支付成功！');
+
+                    // 显示支付成功提示，包含优惠券信息
+                    let message = '支付成功！';
+                    if (res.coupons_added && res.coupons_added > 0) {
+                        message += '\n恭喜获得优惠券！';
+                    }
+                    alert(message);
+
                     loadOrders(); // 重新加载订单列表
                     // 重置当前支付信息
                     currentPayingOrderId = null;
@@ -592,7 +599,7 @@
             data: JSON.stringify({}),
             success: function (res) {
                 if (res.code === 200) {
-                    alert('订单已取消！');
+                    alert(res.msg);
                     loadOrders();
                 } else {
                     alert('取消失败：' + res.msg);

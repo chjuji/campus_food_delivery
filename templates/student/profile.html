@@ -755,7 +755,88 @@
 
     // 打开卡包
     function openWallet() {
-        alert('卡包功能开发中...');
+        // 显示卡包模态框
+        $('#walletModal').modal('show');
+        // 加载优惠券列表
+        loadCoupons();
+    }
+
+    // 加载优惠券列表
+    function loadCoupons() {
+        // 显示加载状态
+        $('#couponList').html('<div class="text-center py-5"><i class="fa fa-spinner fa-spin mr-2"></i>正在加载优惠券...</div>');
+
+        $.ajax({
+            url: '/api/student/coupons',
+            type: 'GET',
+            cache: false,
+            success: function (response) {
+                if (response.code === 200 && response.data && response.data.length > 0) {
+                    // 渲染优惠券列表
+                    renderCoupons(response.data);
+                } else {
+                    // 显示无优惠券提示
+                    $('#couponList').html('<div class="text-center py-5 text-muted"><i class="fa fa-gift" style="font-size: 2rem;"></i><p class="mt-2">暂无优惠券</p></div>');
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('加载优惠券失败:', error);
+                $('#couponList').html('<div class="text-center py-5 text-danger"><i class="fa fa-exclamation-circle"></i><p class="mt-2">加载优惠券失败，请稍后重试</p></div>');
+            }
+        });
+    }
+
+    // 渲染优惠券列表
+    function renderCoupons(coupons) {
+        let html = '';
+        coupons.forEach(function (coupon) {
+            // 格式化过期日期
+            const expireDate = new Date(coupon.expire_date).toLocaleDateString('zh-CN');
+
+            html += `<div class="coupon-item mb-3 p-3 border rounded bg-white shadow-sm">
+                        <div class="row align-items-center">
+                            <div class="col-3 text-center">
+                                <div class="coupon-amount">${coupon.type === '折扣' ? `${coupon.discount_amount}折` : `¥${coupon.discount_amount}`}</div>
+                                <div class="coupon-condition">满¥${coupon.min_spend}可用</div>
+                            </div>
+                            <div class="col-7">
+                                <div class="coupon-name">${coupon.name}</div>
+                    <div class="coupon-type">${coupon.type === '折扣' ? '折扣券' : coupon.type === '满减' ? '满减券' : '无门槛券'}</div>
+                    <div class="coupon-merchant">商家: ${coupon.merchant_name || '未知商家'}</div>
+                    <div class="coupon-expire">有效期至: ${expireDate}</div>
+                            </div>
+                            <div class="col-2 text-center">
+                                <button class="btn btn-sm btn-danger" onclick="deleteCoupon(${coupon.id})" title="删除优惠券">
+                                    删除<i class="fa fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+        });
+        $('#couponList').html(html);
+    }
+
+    // 删除优惠券
+    function deleteCoupon(couponId) {
+        if (confirm('确定要删除此优惠券吗？')) {
+            $.ajax({
+                url: `/api/student/coupons/${couponId}`,
+                type: 'DELETE',
+                success: function (response) {
+                    if (response.code === 200) {
+                        alert('优惠券删除成功');
+                        // 重新加载优惠券列表
+                        loadCoupons();
+                    } else {
+                        alert(response.msg || '删除优惠券失败');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('删除优惠券失败:', error);
+                    alert('网络错误，请稍后重试');
+                }
+            });
+        }
     }
 
     // 检查支付密码状态
@@ -950,4 +1031,78 @@
         </div>
     </div>
 </div>
+
+<!-- 卡包模态框 -->
+<div class="modal fade" id="walletModal" tabindex="-1" aria-labelledby="walletModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="walletModalLabel">我的卡包</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 优惠券列表 -->
+                <div class="mb-4">
+                    <h6>我的优惠券</h6>
+                    <div id="couponList" class="coupon-list">
+                        <!-- 优惠券列表将通过 JavaScript 动态加载 -->
+                        <div class="text-center py-5 text-muted">
+                            <i class="fa fa-gift" style="font-size: 2rem;"></i>
+                            <p class="mt-2">暂无优惠券</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 优惠券样式 */
+    .coupon-item {
+        transition: all 0.3s ease;
+    }
+
+    .coupon-item:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .coupon-amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+
+    .coupon-condition {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .coupon-name {
+        font-weight: bold;
+        font-size: 1rem;
+        margin-bottom: 4px;
+    }
+
+    .coupon-type {
+        font-size: 0.8rem;
+        color: #0d6efd;
+        margin-bottom: 2px;
+    }
+
+    .coupon-merchant {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 3px;
+    }
+
+    .coupon-expire {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+</style>
 {% endblock %}

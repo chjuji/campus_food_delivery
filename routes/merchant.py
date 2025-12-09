@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.merchant import Merchant
 from models.dish import Dish
 from models.order import Order, OrderItem
+from models.coupon import Coupon
 from extensions import db, bcrypt
 from sqlalchemy import func
 from utils.file_utils import save_file
@@ -440,6 +441,24 @@ def get_merchant_statistics():
         Order.create_time >= start_time
     ).scalar() or 0
     
+    # 今日订单数（今天0点至今）
+    today_orders = Order.query.filter_by(
+        merchant_id=merchant.id,
+        status='已送达'
+    ).filter(Order.create_time >= today_start).count()
+    
+    # 今日收入（今天0点至今）
+    today_income = db.session.query(func.sum(Order.pay_amount)).filter_by(
+        merchant_id=merchant.id,
+        status='已送达'
+    ).filter(Order.create_time >= today_start).scalar() or 0
+    
+    # 在售菜品数（状态为上架的菜品）
+    active_dishes = Dish.query.filter_by(
+        merchant_id=merchant.id,
+        is_shelf=True  # True表示在售
+    ).count()
+    
     # 小时级销售数据和订单数
     hourly_sales = []
     hourly_orders = []
@@ -477,6 +496,9 @@ def get_merchant_statistics():
         'total_income': total_income,
         'pending_orders': pending_orders,
         'total_dishes_sold': total_dishes_sold,
+        'today_orders': today_orders,
+        'today_income': today_income,
+        'active_dishes': active_dishes,
         'hourly_sales': hourly_sales,
         'hourly_orders': hourly_orders
     }
@@ -630,10 +652,10 @@ def get_merchant_order_detail(order_id):
             'dish_id': item.dish_id
         })
     
-    # 从Admin表获取配送费
-    from models.admin import Admin
-    admin_config = Admin.get_config()
-    delivery_fee = float(admin_config.delivery_fee)
+    # 从PlatformConfig表获取配送费
+    from models.platform_config import PlatformConfig
+    config = PlatformConfig.get_by_key('default_delivery_fee')
+    delivery_fee = float(config.config_value) if config else 5.0  # 默认5元
     
     # 构造返回数据
     order_data = {
@@ -644,7 +666,7 @@ def get_merchant_order_detail(order_id):
         'total_amount': order.total_amount,
         'pay_amount': order.pay_amount,
         'discount_amount': order.discount_amount,
-        'delivery_fee': delivery_fee,  # 从Admin表获取的配送费
+        'delivery_fee': delivery_fee,  # 从PlatformConfig表获取的配送费
         'address': order.address,
         'remark': order.remark,
         'create_time': order.create_time.strftime('%Y-%m-%d %H:%M:%S') if order.create_time else None,
@@ -986,6 +1008,14 @@ def update_merchant_settings():
             try:
                 from utils.file_utils import save_file
                 logo_file = request.files['logo']
+                
+                # 删除旧Logo文件（如果存在）
+                if merchant.logo:
+                    old_logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', merchant.logo)
+                    if os.path.exists(old_logo_path):
+                        os.remove(old_logo_path)
+                        print(f'旧Logo文件已删除: {old_logo_path}')
+                
                 logo_path = save_file(logo_file, 'merchant')
                 merchant.logo = logo_path
                 print(f'Logo保存成功: {logo_path}')
@@ -1277,3 +1307,209 @@ def accept_order(order_id):
     send_order_notification(order.student.phone, order.order_no, '待配送')
     
     return jsonify({'success': True, 'message': '接单成功'})
+
+# 获取商户优惠券列表
+@merchant_bp.route('/coupons', methods=['GET'])
+@api_login_required
+def get_merchant_coupons():
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    try:
+        coupons = Coupon.query.filter_by(merchant_id=merchant.id).order_by(Coupon.create_time.desc()).all()
+        
+        coupon_list = []
+        for coupon in coupons:
+            coupon_list.append({
+                'id': coupon.id,
+                'coupon_name': coupon.coupon_name,
+                'type': coupon.type,
+                'value': coupon.value,
+                'min_spend': coupon.min_spend,
+                'total': coupon.total,
+                'used': coupon.used,
+                'start_time': coupon.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'end_time': coupon.end_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'create_time': coupon.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_active': coupon.is_active
+            })
+        
+        return jsonify({'success': True, 'data': coupon_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'获取优惠券失败：{str(e)}'}), 500
+
+# 获取单个优惠券详情
+@merchant_bp.route('/coupons/<int:coupon_id>', methods=['GET'])
+@api_login_required
+def get_coupon_detail(coupon_id):
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    try:
+        coupon = Coupon.query.filter_by(id=coupon_id, merchant_id=merchant.id).first()
+        if not coupon:
+            return jsonify({'success': False, 'message': '优惠券不存在'}), 404
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'id': coupon.id,
+                'coupon_name': coupon.coupon_name,
+                'type': coupon.type,
+                'value': coupon.value,
+                'min_spend': coupon.min_spend,
+                'total': coupon.total,
+                'used': coupon.used,
+                'start_time': coupon.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'end_time': coupon.end_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'create_time': coupon.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_active': coupon.is_active
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'获取优惠券详情失败：{str(e)}'}), 500
+
+# 创建优惠券
+@merchant_bp.route('/coupons', methods=['POST'])
+@api_login_required
+def create_coupon():
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    try:
+        data = request.get_json()
+        coupon_name = data.get('coupon_name')
+        type = data.get('type')
+        value = data.get('value')
+        min_spend = data.get('min_spend', 0)
+        total = data.get('total')
+        start_time = datetime.strptime(data.get('start_time'), '%Y-%m-%d %H:%M:%S')
+        end_time = datetime.strptime(data.get('end_time'), '%Y-%m-%d %H:%M:%S')
+        
+        if not all([coupon_name, type, value, total, start_time, end_time]):
+            return jsonify({'success': False, 'message': '缺少必要参数'}), 400
+        
+        # 如果是无门槛券，强制将使用门槛设置为0
+        if type == '无门槛':
+            min_spend = 0
+        
+        new_coupon = Coupon(
+            merchant_id=merchant.id,
+            coupon_name=coupon_name,
+            type=type,
+            value=value,
+            min_spend=min_spend,
+            total=total,
+            start_time=start_time,
+            end_time=end_time
+        )
+        
+        db.session.add(new_coupon)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '优惠券创建成功', 'data': {'id': new_coupon.id}})
+    except ValueError as e:
+        return jsonify({'success': False, 'message': f'时间格式错误：{str(e)}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'创建优惠券失败：{str(e)}'}), 500
+
+# 更新优惠券
+@merchant_bp.route('/coupons/<int:coupon_id>', methods=['PUT'])
+@api_login_required
+def update_coupon(coupon_id):
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    try:
+        coupon = Coupon.query.filter_by(id=coupon_id, merchant_id=merchant.id).first()
+        if not coupon:
+            return jsonify({'success': False, 'message': '优惠券不存在'}), 404
+        
+        data = request.get_json()
+        coupon_name = data.get('coupon_name')
+        type = data.get('type')
+        value = data.get('value')
+        min_spend = data.get('min_spend')
+        total = data.get('total')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        
+        if coupon_name:
+            coupon.coupon_name = coupon_name
+        if type:
+            coupon.type = type
+            # 如果改为无门槛券，强制将使用门槛设置为0
+            if type == '无门槛':
+                coupon.min_spend = 0
+        if value is not None:
+            coupon.value = value
+        if min_spend is not None and coupon.type != '无门槛':
+            coupon.min_spend = min_spend
+        if total is not None:
+            coupon.total = total
+        if start_time:
+            coupon.start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')
+        if end_time:
+            coupon.end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '优惠券更新成功'})
+    except ValueError as e:
+        return jsonify({'success': False, 'message': f'时间格式错误：{str(e)}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'更新优惠券失败：{str(e)}'}), 500
+
+# 删除优惠券
+@merchant_bp.route('/coupons/<int:coupon_id>', methods=['DELETE'])
+@api_login_required
+def delete_coupon(coupon_id):
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    try:
+        coupon = Coupon.query.filter_by(id=coupon_id, merchant_id=merchant.id).first()
+        if not coupon:
+            return jsonify({'success': False, 'message': '优惠券不存在'}), 404
+        
+        db.session.delete(coupon)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '优惠券删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'删除优惠券失败：{str(e)}'}), 500
+
+# 更新优惠券激活状态
+@merchant_bp.route('/coupons/<int:coupon_id>/status', methods=['PUT'])
+@api_login_required
+def update_coupon_status(coupon_id):
+    merchant = get_current_merchant()
+    if not merchant:
+        return jsonify({'success': False, 'message': '未登录'})
+    
+    try:
+        # 获取请求数据
+        data = request.json
+        is_active = data.get('is_active', False)
+        
+        # 查找优惠券
+        coupon = Coupon.query.filter_by(id=coupon_id, merchant_id=merchant.id).first()
+        if not coupon:
+            return jsonify({'success': False, 'message': '优惠券不存在'}), 404
+        
+        # 更新激活状态
+        coupon.is_active = is_active
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '优惠券状态更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'更新优惠券状态失败：{str(e)}'}), 500

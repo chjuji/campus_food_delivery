@@ -39,8 +39,11 @@ def pay_order(order_id):
         return jsonify({'code': 400, 'msg': '支付密码错误'}), 400
     
     try:
-        simulate_payment(order_id)
-        return jsonify({'code': 200, 'msg': '支付成功'})
+        _, coupons_added = simulate_payment(order_id)
+        response = {'code': 200, 'msg': '支付成功'}
+        if coupons_added > 0:
+            response['coupons_added'] = coupons_added
+        return jsonify(response)
     except Exception as e:
         return jsonify({'code': 500, 'msg': str(e)}), 500
 

@@ -25,7 +25,8 @@ class Config:
     UPLOAD_FOLDER = {
         'dish': os.path.join(STATIC_FOLDER, 'uploads/dish'),
         'merchant': os.path.join(STATIC_FOLDER, 'uploads/merchant'),
-        'avatar': os.path.join(STATIC_FOLDER, 'uploads/avatar')
+        'avatar': os.path.join(STATIC_FOLDER, 'uploads/avatar'),
+        'system': os.path.join(STATIC_FOLDER, 'uploads/system')
     }
 
     # 允许的文件格式

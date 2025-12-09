@@ -299,10 +299,10 @@
         })
             .then(response => response.json())
             .then(data => {
-                if (data.code === 200) {
+                if (data.success) {
                     showOrderDetail(data.data);
                 } else {
-                    alert('获取订单详情失败：' + (data.msg || '未知错误'));
+                    alert('获取订单详情失败：' + (data.message || '未知错误'));
                 }
             })
             .catch(error => {

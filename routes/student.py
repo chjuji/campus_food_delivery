@@ -1,14 +1,14 @@
 from flask import Blueprint, request, jsonify, session, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.student import Student
-from models.merchant import Merchant
 from models.cart import Cart
 from models.dish import Dish
 from models.coupon import Coupon, UserCoupon
+from models.merchant import Merchant
 from models.order import Order, OrderItem
 from models.complaint import Complaint
 from models.address import Address
-from models.admin import Admin
+from models.platform_config import PlatformConfig
 import re
 from datetime import datetime
 from services.auth_service import student_register, student_login
@@ -619,9 +619,9 @@ def wallet_pay():
 def get_delivery_fee():
     """获取配送费"""
     try:
-        # 从Admin表获取配送费
-        admin_config = Admin.get_config()
-        delivery_fee = float(admin_config.delivery_fee)
+        # 从PlatformConfig表获取配送费
+        config = PlatformConfig.get_by_key('default_delivery_fee')
+        delivery_fee = float(config.config_value) if config else 5.0  # 默认5元
         return jsonify({'code': 200, 'data': {'delivery_fee': delivery_fee}})
     except Exception as e:
         print(f'获取配送费错误：{str(e)}')
@@ -828,11 +828,13 @@ def get_cart():
         for item in cart_items:
             # 获取菜品的字典数据
             dish_data = item.dish.to_dict()
-            # 添加商家名称到菜品数据中
+            # 添加商家信息到菜品数据中
             if item.dish.merchant:
                 dish_data['merchant_name'] = item.dish.merchant.merchant_name
+                dish_data['merchant_id'] = item.dish.merchant.id
             else:
                 dish_data['merchant_name'] = '未知商家'
+                dish_data['merchant_id'] = None
             
             cart_data.append({
                 'id': item.id,
@@ -964,7 +966,7 @@ def get_user_coupons():
         user_coupons = UserCoupon.query.filter_by(
             student_id=student_id,
             is_used=False
-        ).join(Coupon).filter(
+        ).join(Coupon).join(Merchant).filter(
             Coupon.start_time <= current_time,
             Coupon.end_time >= current_time
         ).all()
@@ -978,7 +980,9 @@ def get_user_coupons():
                 'discount_amount': coupon.value,
                 'min_spend': coupon.min_spend,
                 'expire_date': coupon.end_time.strftime('%Y-%m-%d'),
-                'type': coupon.type
+                'type': coupon.type,
+                'merchant_id': coupon.merchant_id,
+                'merchant_name': coupon.merchant.merchant_name if coupon.merchant else '未知商家'
             })
         
         return jsonify({
@@ -1011,6 +1015,35 @@ def get_user_coupon_count():
     except Exception as e:
         return jsonify({'code': 500, 'msg': f'获取优惠券数量失败：{str(e)}'}), 500
 
+# 删除优惠券
+@student_bp.delete('/coupons/<int:coupon_id>')
+@api_login_required
+def delete_coupon(coupon_id):
+    student_id = session['student_id']
+    
+    try:
+        # 查找用户的优惠券
+        user_coupon = UserCoupon.query.filter_by(
+            student_id=student_id,
+            coupon_id=coupon_id,
+            is_used=False
+        ).first()
+        
+        if not user_coupon:
+            return jsonify({'code': 404, 'msg': '优惠券不存在或已使用'}), 404
+        
+        # 删除优惠券（实际是将is_used设置为True）
+        user_coupon.is_used = True
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '优惠券删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'code': 500, 'msg': f'删除优惠券失败：{str(e)}'}), 500
+
 # 创建订单
 @student_bp.get('/orders/<int:order_id>')
 @api_login_required
@@ -1030,9 +1063,9 @@ def get_student_order_detail(order_id):
         if not order:
             return jsonify({'code': 404, 'msg': '订单不存在'}), 404
         
-        # 从Admin表获取配送费
-        admin_config = Admin.get_config()
-        delivery_fee = float(admin_config.delivery_fee)
+        # 从PlatformConfig表获取配送费
+        config = PlatformConfig.get_by_key('default_delivery_fee')
+        delivery_fee = float(config.config_value) if config else 5.0  # 默认5元
         
         # 构建响应数据
         order_data = {
@@ -1047,7 +1080,7 @@ def get_student_order_detail(order_id):
             'discount_amount': order.discount_amount,
             'address': order.address,
             'remark': order.remark,
-            'delivery_fee': delivery_fee,  # 从Admin表获取配送费
+            'delivery_fee': delivery_fee,  # 从PlatformConfig表获取配送费
             'merchant': {
                 'name': order.merchant.merchant_name if order.merchant else '未知商户'
             },
@@ -1111,9 +1144,9 @@ def get_student_orders():
         # 分页
         pagination = query.paginate(page=page, per_page=page_size, error_out=False)
         
-        # 从Admin表获取配送费（只获取一次，提高性能）
-        admin_config = Admin.get_config()
-        delivery_fee = float(admin_config.delivery_fee)
+        # 从PlatformConfig表获取配送费（只获取一次，提高性能）
+        config = PlatformConfig.get_by_key('default_delivery_fee')
+        delivery_fee = float(config.config_value) if config else 5.0  # 默认5元
         
         # 构建响应数据
         orders_data = []
@@ -1131,7 +1164,7 @@ def get_student_orders():
                 'discount_amount': order.discount_amount,
                 'address': order.address,
                 'remark': order.remark,
-                'delivery_fee': delivery_fee,  # 从Admin表获取配送费
+                'delivery_fee': delivery_fee,  # 从PlatformConfig表获取配送费
                 'merchant': {
                     'name': order.merchant.merchant_name if order.merchant else '未知商户'
                 },
@@ -1202,26 +1235,21 @@ def create_student_order():
     
     try:
         # 创建订单
-        order = create_order(
+        order, coupons_added = create_order(
             student_id=identity['id'],
             merchant_id=merchant_id,
             address_id=address_id,
             remark=remark,
             coupon=valid_coupon,
             cart_item_ids=cart_item_ids,
-            status=status
+            status=status,
+            user_coupon=user_coupon
         )
         
-        # 注意：create_order函数中已经处理了购物车清空逻辑
+        # 注意：create_order函数中已经处理了购物车清空逻辑和优惠券使用逻辑
         
-        # 使用优惠券后更新状态
-        if valid_coupon and user_coupon:
-            user_coupon.is_used = True
-            user_coupon.use_time = datetime.now()
-            valid_coupon.used += 1
-            db.session.commit()
-        
-        return jsonify({
+        # 构建响应数据
+        response = {
             'code': 200,
             'msg': '订单创建成功',
             'data': {
@@ -1230,8 +1258,15 @@ def create_student_order():
                 'pay_amount': order.pay_amount,
                 'total_amount': order.total_amount,
                 'discount_amount': order.discount_amount
-            }
-        })
+            },
+            'coupons_added': coupons_added
+        }
+        
+        # 如果有优惠券发放，添加到响应中
+        if coupons_added > 0:
+            response['coupons_added'] = coupons_added
+        
+        return jsonify(response)
     except ValueError as ve:
         db.session.rollback()
         return jsonify({'code': 400, 'msg': str(ve)}), 400
@@ -1274,21 +1309,46 @@ def cancel_order(order_id):
             
             # 获取订单支付金额并转换为Decimal类型
             from decimal import Decimal
+            from models.platform_config import PlatformConfig
+            
             refund_amount = Decimal(str(order.pay_amount))
             
-            # 从商户钱包扣除金额
-            merchant.wallet -= refund_amount
+            # 获取配送费
+            config = PlatformConfig.get_by_key('default_delivery_fee')
+            delivery_fee = Decimal(str(config.config_value)) if config else Decimal('5.0')
+            
+            # 计算商户应承担的金额（不含配送费）
+            merchant_earnings = refund_amount - delivery_fee
+            
+            # 从商户钱包扣除订单原费用（不含配送费）
+            merchant.wallet -= merchant_earnings
             if merchant.wallet < 0:
                 return jsonify({'code': 500, 'msg': '商户钱包余额不足，无法退款'}), 500
             
-            # 将金额退还给学生
+            # 从平台扣除配送费
+            current_earnings = Decimal(str(PlatformConfig.get_delivery_fee_earnings()))
+            new_earnings = current_earnings - delivery_fee
+            if new_earnings < 0:
+                return jsonify({'code': 500, 'msg': '平台配送费收入不足，无法退款'}), 500
+            PlatformConfig.update_delivery_fee_earnings(new_earnings)
+            
+            # 将全部金额退还给学生
             student.wallet += refund_amount
+            
+            # 添加退款日志
+            print(f"订单 {order_id} 取消退款：")
+            print(f"  - 退款总金额：¥{refund_amount:.2f}")
+            print(f"  - 从商户扣取：¥{merchant_earnings:.2f}")
+            print(f"  - 从平台扣取配送费：¥{delivery_fee:.2f}")
+            print(f"  - 商户新余额：¥{merchant.wallet:.2f}")
+            print(f"  - 平台配送费新收入：¥{new_earnings:.2f}")
+            print(f"  - 学生新余额：¥{student.wallet:.2f}")
         
         # 将订单状态改为已取消
         order.status = '已取消'
         db.session.commit()
         
-        return jsonify({'code': 200, 'msg': '订单已取消'})
+        return jsonify({'code': 200, 'msg': '取消订单成功，您的花费已退还至钱包'})
     except Exception as e:
         db.session.rollback()
         print(f'取消订单错误：{str(e)}')
@@ -1387,10 +1447,18 @@ def get_complaints():
             # 将中文状态转换为英文状态
             english_status = reverse_status_map.get(complaint.status, 'unknown')
             
+            # 获取订单号
+            order_no = ''
+            if complaint.order_id:
+                order = Order.query.get(complaint.order_id)
+                if order:
+                    order_no = order.order_no
+            
             complaint_list.append({
                 'id': complaint.id,
                 'content': complaint.content or '',
-                'order_id': complaint.order_id,  # 与模型字段名保持一致
+                'order_id': complaint.order_id,  # 保留order_id用于API调用
+                'order_no': order_no,  # 新增order_no字段
                 'created_at': create_time_str,
                 'status': english_status,
                 'response': complaint.handle_result or ''

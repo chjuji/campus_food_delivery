@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>校园外卖 - 首页</title>
+    <title>{{ platform_info.platform_name }} - 首页</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial;
@@ -89,8 +89,14 @@
 <body>
     <div class="container">
         <header>
-            <h1>校园外卖</h1>
-            <p class="lead">欢迎使用校园外卖系统 —— 请选择您的入口</p>
+            {% if platform_info.platform_logo %}
+            <div style="text-align: center; margin-bottom: 16px;">
+                <img src="{{ url_for('static', filename=platform_info.platform_logo[7:]) }}"
+                    alt="{{ platform_info.platform_name }}" style="max-height: 80px; max-width: 200px;">
+            </div>
+            {% endif %}
+            <h1>{{ platform_info.platform_name }}</h1>
+            <p class="lead">{{ platform_info.platform_desc }} —— 请选择您的入口</p>
         </header>
 
         <div class="grid">
@@ -125,7 +131,11 @@
         </div>
 
         <footer>
-            &copy; {{ current_year if current_year is defined else "" }} 校园外卖系统
+            <div style="margin-bottom: 8px;">
+                {% if platform_info.contact_phone %}联系电话：{{ platform_info.contact_phone }} {% endif %}
+                {% if platform_info.contact_email %}邮箱：{{ platform_info.contact_email }}{% endif %}
+            </div>
+            &copy; {{ current_year if current_year is defined else "" }} {{ platform_info.platform_name }}
         </footer>
     </div>
 </body>

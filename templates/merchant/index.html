@@ -62,6 +62,60 @@
         </div>
     </div>
 </div>
+<!-- 优惠券编辑悬浮框 -->
+<div class="modal fade" id="couponModal" tabindex="-1" aria-labelledby="couponModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="couponModalLabel">优惠券管理</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="couponForm">
+                    <input type="hidden" id="couponId">
+                    <div class="mb-3">
+                        <label for="couponName" class="form-label">优惠券名称</label>
+                        <input type="text" class="form-control" id="couponName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="couponType" class="form-label">优惠券类型</label>
+                        <select class="form-select" id="couponType" required>
+                            <option value="满减">满减券</option>
+                            <option value="折扣">折扣券</option>
+                            <option value="无门槛">无门槛券</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="couponValue" class="form-label" id="couponValueLabel">面额/折扣</label>
+                        <input type="number" class="form-control" id="couponValue" step="0.01" required>
+                        <div id="couponValueHelp" class="form-text">请输入正数</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="couponMinSpend" class="form-label">使用门槛（元）</label>
+                        <input type="number" class="form-control" id="couponMinSpend" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="couponTotal" class="form-label">总数量</label>
+                        <input type="number" class="form-control" id="couponTotal" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="couponStartTime" class="form-label">开始时间</label>
+                        <input type="datetime-local" class="form-control" id="couponStartTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="couponEndTime" class="form-label">结束时间</label>
+                        <input type="datetime-local" class="form-control" id="couponEndTime" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="saveCouponBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
 
 <div class="row mt-4">
     <!-- 最近订单 -->
@@ -102,6 +156,41 @@
             <div class="card-body">
                 <div id="salesChart" style="height: 250px;">
                     <canvas id="chartCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- 优惠券设置 -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>优惠券设置</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="manageCouponsBtn">添加优惠券</button>
+            </div>
+            <div class="card-body">
+                <div id="couponsTableContainer" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>优惠券名称</th>
+                                <th>类型</th>
+                                <th>面额/折扣</th>
+                                <th>使用门槛</th>
+                                <th>总数量</th>
+                                <th>已使用</th>
+                                <th>有效期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="couponsTable">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -161,11 +250,274 @@
         // 加载数据
         loadStatistics();
         loadRecentOrders();
+        loadCoupons();
         loadPopularDishes();
 
         // 定时刷新数据
         setInterval(loadStatistics, 60000);
         setInterval(loadRecentOrders, 30000);
+
+        // 根据优惠券类型更新输入框标签、帮助文本和使用门槛
+        function updateCouponValueLabel() {
+            const couponType = $('#couponType').val();
+            const labelElement = $('#couponValueLabel');
+            const helpElement = $('#couponValueHelp');
+            const valueInput = $('#couponValue');
+            const couponMinSpend = $('#couponMinSpend');
+
+            if (couponType === '折扣') {
+                labelElement.text('折扣');
+                helpElement.text('请输入正数，单位：折');
+                valueInput.attr('placeholder', '例如：8.5');
+                valueInput.attr('max', '10');
+                valueInput.attr('min', '0.1');
+                valueInput.attr('step', '0.1');
+                // 折扣券可以设置使用门槛
+                couponMinSpend.removeAttr('disabled');
+            } else if (couponType === '无门槛') {
+                labelElement.text('面额');
+                helpElement.text('请输入正数，单位：元');
+                valueInput.attr('placeholder', '例如：10');
+                valueInput.removeAttr('max');
+                valueInput.attr('min', '0.01');
+                valueInput.attr('step', '0.01');
+                // 无门槛券强制设置使用门槛为0且不可更改
+                couponMinSpend.val('0');
+                couponMinSpend.attr('disabled', 'disabled');
+            } else { // 满减券
+                labelElement.text('面额');
+                helpElement.text('请输入正数，单位：元');
+                valueInput.attr('placeholder', '例如：10');
+                valueInput.removeAttr('max');
+                valueInput.attr('min', '0.01');
+                valueInput.attr('step', '0.01');
+                // 满减券可以设置使用门槛
+                couponMinSpend.removeAttr('disabled');
+            }
+        }
+
+        // 添加优惠券按钮点击事件
+        $('#manageCouponsBtn').click(function () {
+            // 清空表单，准备添加新优惠券
+            $('#couponForm')[0].reset();
+            $('#couponId').val('');
+            $('#couponModal').modal('show');
+            // 初始化输入框标签和提示
+            updateCouponValueLabel();
+        });
+
+        // 编辑优惠券按钮点击事件
+        $(document).on('click', '.edit-coupon-btn', function () {
+            const couponId = $(this).data('id');
+            const token = localStorage.getItem('merchant_token');
+
+            // 获取优惠券详情
+            $.ajax({
+                url: `/api/merchant/coupons/${couponId}`,
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function (res) {
+                    if (res.success === true) {
+                        const coupon = res.data;
+                        // 填充表单数据
+                        $('#couponId').val(coupon.id);
+                        $('#couponName').val(coupon.coupon_name);
+                        $('#couponType').val(coupon.type);
+                        $('#couponValue').val(coupon.value);
+                        $('#couponMinSpend').val(coupon.min_spend);
+                        $('#couponTotal').val(coupon.total);
+                        // 格式化时间为datetime-local格式 (YYYY-MM-DDTHH:MM)
+                        const startTime = coupon.start_time.replace(' ', 'T').slice(0, 16);
+                        const endTime = coupon.end_time.replace(' ', 'T').slice(0, 16);
+                        $('#couponStartTime').val(startTime);
+                        $('#couponEndTime').val(endTime);
+
+                        // 显示模态框
+                        $('#couponModal').modal('show');
+                        // 更新输入框标签和提示
+                        updateCouponValueLabel();
+                    }
+                }
+            });
+        });
+
+        // 删除优惠券按钮点击事件
+        $(document).on('click', '.delete-coupon-btn', function () {
+            const couponId = $(this).data('id');
+            if (confirm('确定要删除这个优惠券吗？')) {
+                const token = localStorage.getItem('merchant_token');
+
+                $.ajax({
+                    url: `/api/merchant/coupons/${couponId}`,
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    success: function (res) {
+                        if (res.success === true) {
+                            alert('优惠券删除成功！');
+                            loadCoupons(); // 重新加载优惠券列表
+                        } else {
+                            alert('删除失败：' + res.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        alert('删除失败：' + xhr.responseJSON.message);
+                    }
+                });
+            }
+        });
+
+        // 优惠券状态开关点击事件 - 实现单选功能：一次只能激活一个优惠券
+        $(document).on('change', '.coupon-status-switch', function () {
+            const currentSwitch = $(this);
+            const couponId = currentSwitch.data('id');
+            const isActive = currentSwitch.prop('checked');
+            const token = localStorage.getItem('merchant_token');
+
+            if (isActive) {
+                // 如果是打开当前开关，需要先关闭所有其他开关
+                // 1. 先禁用所有开关，防止用户重复点击
+                $('.coupon-status-switch').prop('disabled', true);
+
+                // 2. 发送请求激活当前优惠券
+                $.ajax({
+                    url: `/api/merchant/coupons/${couponId}/status`,
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    contentType: 'application/json',
+                    data: JSON.stringify({ is_active: true }),
+                    success: function (res) {
+                        if (res.success === true) {
+                            // 3. 如果当前优惠券激活成功，关闭所有其他开关并更新其状态
+                            const otherSwitches = $('.coupon-status-switch').not(currentSwitch);
+                            let closedCount = 0;
+                            const totalOtherSwitches = otherSwitches.length;
+
+                            if (totalOtherSwitches === 0) {
+                                // 没有其他开关，直接启用所有开关
+                                $('.coupon-status-switch').prop('disabled', false);
+                                return;
+                            }
+
+                            // 4. 为每个其他开关发送请求更新状态为未激活
+                            otherSwitches.each(function () {
+                                const otherSwitch = $(this);
+                                const otherCouponId = otherSwitch.data('id');
+
+                                $.ajax({
+                                    url: `/api/merchant/coupons/${otherCouponId}/status`,
+                                    method: 'PUT',
+                                    headers: { 'Authorization': `Bearer ${token}` },
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({ is_active: false }),
+                                    success: function () {
+                                        // 5. 更新UI，关闭开关
+                                        otherSwitch.prop('checked', false);
+                                        closedCount++;
+
+                                        // 6. 当所有其他开关都关闭后，启用所有开关
+                                        if (closedCount === totalOtherSwitches) {
+                                            $('.coupon-status-switch').prop('disabled', false);
+                                        }
+                                    },
+                                    error: function (xhr) {
+                                        console.error('关闭优惠券失败：', xhr.responseJSON.message);
+                                        closedCount++;
+
+                                        // 即使有错误，也要启用所有开关
+                                        if (closedCount === totalOtherSwitches) {
+                                            $('.coupon-status-switch').prop('disabled', false);
+                                        }
+                                    }
+                                });
+                            });
+                        } else {
+                            // 如果激活当前优惠券失败，恢复开关状态并启用所有开关
+                            alert('激活优惠券失败：' + res.message);
+                            currentSwitch.prop('checked', false);
+                            $('.coupon-status-switch').prop('disabled', false);
+                        }
+                    },
+                    error: function (xhr) {
+                        // 如果请求失败，恢复开关状态并启用所有开关
+                        alert('激活优惠券失败：' + xhr.responseJSON.message);
+                        currentSwitch.prop('checked', false);
+                        $('.coupon-status-switch').prop('disabled', false);
+                    }
+                });
+            } else {
+                // 如果是关闭当前开关，直接发送请求
+                $.ajax({
+                    url: `/api/merchant/coupons/${couponId}/status`,
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    contentType: 'application/json',
+                    data: JSON.stringify({ is_active: false }),
+                    success: function (res) {
+                        if (res.success !== true) {
+                            // 如果关闭失败，恢复开关状态
+                            alert('关闭优惠券失败：' + res.message);
+                            currentSwitch.prop('checked', true);
+                        }
+                    },
+                    error: function (xhr) {
+                        // 如果请求失败，恢复开关状态
+                        alert('关闭优惠券失败：' + xhr.responseJSON.message);
+                        currentSwitch.prop('checked', true);
+                    }
+                });
+            }
+        });
+
+        // 监听优惠券类型变化事件
+        $('#couponType').change(function () {
+            updateCouponValueLabel();
+        });
+
+        // 保存优惠券按钮点击事件
+        $('#saveCouponBtn').click(function () {
+            // 验证表单
+            if (!$('#couponForm')[0].checkValidity()) {
+                $('#couponForm')[0].reportValidity();
+                return;
+            }
+
+            const token = localStorage.getItem('merchant_token');
+            const couponId = $('#couponId').val();
+            const url = couponId ? `/api/merchant/coupons/${couponId}` : '/api/merchant/coupons';
+            const method = couponId ? 'PUT' : 'POST';
+
+            // 构建请求数据
+            const data = {
+                coupon_name: $('#couponName').val(),
+                type: $('#couponType').val(),
+                value: parseFloat($('#couponValue').val()),
+                min_spend: parseFloat($('#couponMinSpend').val()),
+                total: parseInt($('#couponTotal').val()),
+                start_time: $('#couponStartTime').val().replace('T', ' ') + ':00',
+                end_time: $('#couponEndTime').val().replace('T', ' ') + ':00'
+            };
+
+            $.ajax({
+                url: url,
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.success === true) {
+                        alert(couponId ? '优惠券更新成功！' : '优惠券创建成功！');
+                        $('#couponModal').modal('hide');
+                        loadCoupons(); // 重新加载优惠券列表
+                    } else {
+                        alert((couponId ? '更新' : '创建') + '失败：' + res.message);
+                    }
+                },
+                error: function (xhr) {
+                    alert((couponId ? '更新' : '创建') + '失败：' + xhr.responseJSON.message);
+                }
+            });
+        });
     });
 
     // 初始化销售趋势图
@@ -291,6 +643,56 @@
                         });
                     }
                     $('#recentOrdersTable').html(html);
+                }
+            }
+        });
+    }
+
+    // 加载优惠券数据
+    function loadCoupons() {
+        const token = localStorage.getItem('merchant_token');
+        $.ajax({
+            url: '/api/merchant/coupons',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.success === true) {
+                    let html = '';
+                    if (res.data.length === 0) {
+                        html = '<tr><td colspan="7" class="text-center text-muted">暂无优惠券</td></tr>';
+                    } else {
+                        res.data.forEach(coupon => {
+                            const couponType = {
+                                '满减': '满减券',
+                                '折扣': '折扣券',
+                                '无门槛': '无门槛券'
+                            }[coupon.type] || coupon.type;
+
+                            const valueDisplay = coupon.type === '折扣' ? `${coupon.value}折` : `¥${coupon.value}`;
+                            const minSpendDisplay = coupon.min_spend > 0 ? `满¥${coupon.min_spend}` : '无门槛';
+                            const validityPeriod = `${coupon.start_time.split(' ')[0]} 至 ${coupon.end_time.split(' ')[0]}`;
+
+                            html += `
+                                <tr>
+                                    <td>${coupon.coupon_name}</td>
+                                    <td>${couponType}</td>
+                                    <td>${valueDisplay}</td>
+                                    <td>${minSpendDisplay}</td>
+                                    <td>${coupon.total}</td>
+                                    <td>${coupon.used}</td>
+                                    <td>${validityPeriod}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary edit-coupon-btn" data-id="${coupon.id}">编辑</button>
+                                        <button type="button" class="btn btn-sm btn-danger delete-coupon-btn" data-id="${coupon.id}">删除</button>
+                                        <div class="form-check form-switch d-inline-block ms-2">
+                                            <input class="form-check-input coupon-status-switch" type="checkbox" data-id="${coupon.id}" id="couponSwitch${coupon.id}" ${coupon.is_active ? 'checked' : ''}>
+                                            <label class="form-check-label visually-hidden" for="couponSwitch${coupon.id}">优惠券状态</label>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    $('#couponsTable').html(html);
                 }
             }
         });

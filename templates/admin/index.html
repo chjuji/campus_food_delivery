@@ -107,6 +107,8 @@
                                 onclick="switchSettingsTab('merchant')">商户设置</button>
                             <button class="btn btn-outline-primary me-2"
                                 onclick="switchSettingsTab('system')">系统设置</button>
+                            <button class="btn btn-outline-primary me-2"
+                                onclick="switchSettingsTab('coupons')">优惠券管理</button>
                         </div>
 
                         <!-- 设置内容区域 -->
@@ -960,6 +962,105 @@
             window.location.href = '/admin/login';
         }
 
+        // 加载优惠券列表
+        function loadCoupons() {
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: '/api/admin/coupons',
+                type: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                success: function (res) {
+                    if (res.code === 200) {
+                        renderCouponsTable(res.data);
+                    } else {
+                        alert('获取优惠券列表失败：' + res.msg);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('请求失败:', xhr.responseText);
+                    if (xhr.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        window.location.href = '/admin/login';
+                    } else {
+                        alert('网络错误，获取优惠券列表失败');
+                    }
+                }
+            });
+        }
+
+        // 渲染优惠券表格
+        function renderCouponsTable(userCoupons) {
+            const tableBody = $('#couponTableBody');
+            tableBody.empty();
+
+            if (userCoupons.length === 0) {
+                tableBody.append(`
+                    <tr>
+                        <td colspan="11" class="text-center text-muted">暂无用户优惠券数据</td>
+                    </tr>
+                `);
+                return;
+            }
+
+            userCoupons.forEach((userCoupon, index) => {
+                const row = `
+                    <tr>
+                        <td>${userCoupon.id}</td>
+                        <td>${userCoupon.student_id}</td>
+                        <td>${userCoupon.student_name || '未知用户'}</td>
+                        <td>${userCoupon.coupon_id}</td>
+                        <td>${userCoupon.coupon_name}</td>
+                        <td>¥${userCoupon.discount_amount.toFixed(2)}</td>
+                        <td>¥${userCoupon.min_spend.toFixed(2)}</td>
+                        <td>${userCoupon.is_used ? '已使用' : '未使用'}</td>
+                        <td>${userCoupon.get_time}</td>
+                        <td>${userCoupon.use_time || '-'}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteCoupon(${userCoupon.id})">
+                                <i class="bi bi-trash"></i> 删除
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.append(row);
+            });
+        }
+
+        // 删除优惠券
+        function deleteCoupon(couponId) {
+            if (!confirm('确定要删除该优惠券吗？此操作不可恢复！')) {
+                return;
+            }
+
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: `/api/admin/coupons/${couponId}`,
+                type: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                success: function (res) {
+                    if (res.code === 200) {
+                        alert('优惠券删除成功');
+                        loadCoupons(); // 重新加载优惠券列表
+                    } else {
+                        alert('删除失败：' + res.msg);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('请求失败:', xhr.responseText);
+                    if (xhr.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        window.location.href = '/admin/login';
+                    } else {
+                        alert('网络错误，删除失败');
+                    }
+                }
+            });
+        }
+
         // 平台设置相关变量
         let settingsData = {};
         let currentSettingsTab = 'basic';
@@ -1004,33 +1105,91 @@
 
         // 渲染设置面板
         function renderSettingsPanel(category) {
-            const configs = settingsData[category] || [];
             let html = '';
 
-            if (configs.length === 0) {
-                html = '<div class="text-center py-5"><p class="text-muted">暂无设置项</p></div>';
-            } else {
-                html = '<div class="row">';
-
-                configs.forEach(config => {
-                    html += `<div class="col-md-6 mb-4">
-                        <div class="form-group">
-                            <label for="${config.config_key}" class="font-weight-medium">${config.description}</label>
-                            ${getInputHtml(config)}
-                            <small class="form-text text-muted">键名: ${config.config_key}</small>
+            // 特殊处理优惠券管理
+            if (category === 'coupons') {
+                // 显示用户领取的优惠券列表
+                html = `
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>用户优惠券列表</h5>
                         </div>
-                    </div>`;
-                });
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>学生ID</th>
+                                            <th>学生姓名</th>
+                                            <th>优惠券ID</th>
+                                            <th>优惠券名称</th>
+                                            <th>优惠金额</th>
+                                            <th>最低消费</th>
+                                            <th>使用状态</th>
+                                            <th>领取时间</th>
+                                            <th>使用时间</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="couponTableBody">
+                                        <!-- 优惠券数据将通过JavaScript动态加载 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('#settingsContent').html(html);
+                loadCoupons(); // 加载优惠券数据
+            } else {
+                // 原有的设置项渲染逻辑
+                const configs = settingsData[category] || [];
 
-                html += '</div>';
+                if (configs.length === 0) {
+                    html = '<div class="text-center py-5"><p class="text-muted">暂无设置项</p></div>';
+                } else {
+                    html = '<div class="row">';
+
+                    configs.forEach(config => {
+                        html += `<div class="col-md-6 mb-4">
+                            <div class="form-group">
+                                <label for="${config.config_key}" class="font-weight-medium">${config.description}</label>
+                                ${getInputHtml(config)}
+                                <small class="form-text text-muted">键名: ${config.config_key}</small>
+                            </div>
+                        </div>`;
+                    });
+
+                    html += '</div>';
+                }
+
+                $('#settingsContent').html(html);
             }
-
-            $('#settingsContent').html(html);
         }
 
         // 根据配置类型生成输入框
         function getInputHtml(config) {
             const value = config.config_value || '';
+
+            // 特殊处理平台Logo
+            if (config.config_key === 'platform_logo') {
+                let logoHtml = '';
+                if (value) {
+                    logoHtml = `<div class="mt-2">
+                        <img src="${value}" alt="平台Logo" style="max-width: 200px; max-height: 100px;">
+                    </div>`;
+                }
+                return `
+                    <div class="d-flex align-items-center">
+                        <input type="file" id="${config.config_key}_file" class="form-control mt-1 mr-2" accept="image/*">
+                        <button type="button" class="btn btn-primary mt-1" onclick="uploadLogo()">上传</button>
+                    </div>
+                    ${logoHtml}
+                    <input type="hidden" id="${config.config_key}" value="${value}" config-key="${config.config_key}" config-type="${config.config_type}">
+                `;
+            }
 
             switch (config.config_type) {
                 case 'number':
@@ -1042,6 +1201,68 @@
                 default: // string
                     return `<input type="text" id="${config.config_key}" class="form-control mt-1" value="${value}" config-key="${config.config_key}" config-type="${config.config_type}">`;
             }
+        }
+
+        // 上传平台Logo
+        function uploadLogo() {
+            const fileInput = document.getElementById('platform_logo_file');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('请选择一个图片文件');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            $.ajax({
+                url: '/api/admin/upload_logo',
+                type: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('admin_token')
+                },
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    if (response.code === 200) {
+                        // 更新隐藏输入框的值
+                        document.getElementById('platform_logo').value = response.data.logo_path;
+
+                        // 更新页面上的Logo显示
+                        const logoContainer = fileInput.parentElement.parentElement;
+                        const existingLogo = logoContainer.querySelector('img');
+                        if (existingLogo) {
+                            existingLogo.src = response.data.logo_path;
+                        } else {
+                            const newLogo = document.createElement('div');
+                            newLogo.className = 'mt-2';
+                            newLogo.innerHTML = `<img src="${response.data.logo_path}" alt="平台Logo" style="max-width: 200px; max-height: 100px;">`;
+                            logoContainer.appendChild(newLogo);
+                        }
+
+                        alert('Logo上传成功');
+
+                        // 更新settingsData中的Logo值
+                        for (const category in settingsData) {
+                            const configs = settingsData[category];
+                            for (let i = 0; i < configs.length; i++) {
+                                if (configs[i].config_key === 'platform_logo') {
+                                    configs[i].config_value = response.data.logo_path;
+                                    break;
+                                }
+                            }
+                        }
+                        // 更新原始数据
+                        originalSettings = JSON.parse(JSON.stringify(settingsData));
+                    } else {
+                        alert(response.msg || 'Logo上传失败');
+                    }
+                },
+                error: function () {
+                    alert('网络错误，请稍后重试');
+                }
+            });
         }
 
         // 保存设置

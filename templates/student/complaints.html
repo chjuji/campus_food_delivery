@@ -13,350 +13,352 @@
 {% endblock %}
 
 {% block content %}
-    <div class="card">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">投诉管理</h5>
-                <button class="btn btn-primary" onclick="showComplaintForm()">
-                    <i class="fas fa-plus me-1"></i>提交投诉
-                </button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="mb-4">
-                <div class="d-flex flex-wrap gap-2">
-                    <button class="btn btn-sm btn-outline-primary active" onclick="filterComplaints('all')">全部</button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('pending')">待处理</button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('processing')">处理中</button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('resolved')">已解决</button>
-                </div>
-            </div>
-            
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>投诉内容</th>
-                            <th>涉及订单</th>
-                            <th>投诉时间</th>
-                            <th>状态</th>
-                            <th>处理结果</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="complaintsTable">
-                        <!-- 投诉列表将通过JavaScript动态加载 -->
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">
-                                加载中...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="mt-4 d-flex justify-content-center" id="pagination">
-                <!-- 分页控件将通过JavaScript动态生成 -->
-            </div>
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">投诉管理</h5>
+            <button class="btn btn-primary" onclick="showComplaintForm()">
+                <i class="fas fa-plus me-1"></i>提交投诉
+            </button>
         </div>
     </div>
+    <div class="card-body">
+        <div class="mb-4">
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-outline-primary active" onclick="filterComplaints('all')">全部</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('pending')">待处理</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('processing')">处理中</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('resolved')">已解决</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>投诉内容</th>
+                        <th>涉及订单</th>
+                        <th>投诉时间</th>
+                        <th>状态</th>
+                        <th>处理结果</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="complaintsTable">
+                    <!-- 投诉列表将通过JavaScript动态加载 -->
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            加载中...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 d-flex justify-content-center" id="pagination">
+            <!-- 分页控件将通过JavaScript动态生成 -->
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        // 检查登录状态
-        $(document).ready(function() {
-            const token = localStorage.getItem('student_token');
-            if (!token) {
-                window.location.href = '/student/login';
-                return;
-            }
-            
-            // 更新用户名显示
-            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-            $('#userName').text(userInfo.name || '学生');
-            
-            // 设置侧边栏激活状态
-            $('.nav-link').removeClass('active');
-            $('.nav-link[href="/student/complaints"]').addClass('active');
-            
-            // 加载投诉列表
-            loadComplaints(1, 'all');
-        });
-        
-        // 加载投诉列表
-        function loadComplaints(page = 1, status = 'all') {
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: `/api/student/complaints?page=${page}&status=${status}`,
-                type: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function(res) {
-                    if (res.code === 200) {
-                        renderComplaintsTable(res.data.items);
-                        renderPagination(res.data.total, res.data.page, res.data.page_size, status);
-                    } else {
-                        alert('获取投诉列表失败：' + res.msg);
-                        $('#complaintsTable').html('<tr><td colspan="6" class="text-center text-muted">加载失败</td></tr>');
-                    }
-                },
-                error: function() {
-                    alert('网络错误，请稍后重试');
-                    $('#complaintsTable').html('<tr><td colspan="6" class="text-center text-muted">网络错误</td></tr>');
-                }
-            });
+<script>
+    // 检查登录状态
+    $(document).ready(function () {
+        const token = localStorage.getItem('student_token');
+        if (!token) {
+            window.location.href = '/student/login';
+            return;
         }
-        
-        // 渲染投诉列表
-        function renderComplaintsTable(complaints) {
-            if (!complaints || complaints.length === 0) {
-                $('#complaintsTable').html('<tr><td colspan="6" class="text-center text-muted">暂无投诉记录</td></tr>');
-                return;
-            }
-            
-            let html = '';
-            complaints.forEach(complaint => {
-                let statusText, statusClass;
-                switch (complaint.status) {
-                    case 'pending':
-                        statusText = '待处理';
-                        statusClass = 'badge bg-warning';
-                        break;
-                    case 'processing':
-                        statusText = '处理中';
-                        statusClass = 'badge bg-info';
-                        break;
-                    case 'resolved':
-                        statusText = '已解决';
-                        statusClass = 'badge bg-success';
-                        break;
-                    default:
-                        statusText = '未知';
-                        statusClass = 'badge bg-secondary';
+
+        // 更新用户名显示
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        $('#userName').text(userInfo.name || '学生');
+
+        // 设置侧边栏激活状态
+        $('.nav-link').removeClass('active');
+        $('.nav-link[href="/student/complaints"]').addClass('active');
+
+        // 加载投诉列表
+        loadComplaints(1, 'all');
+    });
+
+    // 加载投诉列表
+    function loadComplaints(page = 1, status = 'all') {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/complaints?page=${page}&status=${status}`,
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    renderComplaintsTable(res.data.items);
+                    renderPagination(res.data.total, res.data.page, res.data.page_size, status);
+                } else {
+                    alert('获取投诉列表失败：' + res.msg);
+                    $('#complaintsTable').html('<tr><td colspan="6" class="text-center text-muted">加载失败</td></tr>');
                 }
-                
-                html += `
+            },
+            error: function () {
+                alert('网络错误，请稍后重试');
+                $('#complaintsTable').html('<tr><td colspan="6" class="text-center text-muted">网络错误</td></tr>');
+            }
+        });
+    }
+
+    // 渲染投诉列表
+    function renderComplaintsTable(complaints) {
+        if (!complaints || complaints.length === 0) {
+            $('#complaintsTable').html('<tr><td colspan="6" class="text-center text-muted">暂无投诉记录</td></tr>');
+            return;
+        }
+
+        let html = '';
+        complaints.forEach(complaint => {
+            let statusText, statusClass;
+            switch (complaint.status) {
+                case 'pending':
+                    statusText = '待处理';
+                    statusClass = 'badge bg-warning';
+                    break;
+                case 'processing':
+                    statusText = '处理中';
+                    statusClass = 'badge bg-info';
+                    break;
+                case 'resolved':
+                    statusText = '已解决';
+                    statusClass = 'badge bg-success';
+                    break;
+                default:
+                    statusText = '未知';
+                    statusClass = 'badge bg-secondary';
+            }
+
+            html += `
                     <tr>
                         <td>${complaint.content || '-'}</td>
                         <td>
-                            ${complaint.food_order_id ? 
-                                `<a href="/student/orders/detail/${complaint.food_order_id}" class="text-primary">${complaint.food_order_id}</a>` : 
-                                '-'}
+                            ${complaint.order_no ?
+                    `<a href="/student/orders/detail/${complaint.order_id}" class="text-primary">${complaint.order_no}</a>` :
+                    '-'}
                         </td>
                         <td>${formatDate(complaint.created_at)}</td>
                         <td><span class="${statusClass}">${statusText}</span></td>
                         <td>${complaint.response || '-'}</td>
                         <td>
-                            ${complaint.status === 'pending' ? 
-                                `<button class="btn btn-sm btn-outline-danger" onclick="deleteComplaint(${complaint.id})">删除</button>` : 
-                                '<span class="text-muted">无操作</span>'}
+                            ${complaint.status === 'pending' ?
+                    `<button class="btn btn-sm btn-outline-danger" onclick="deleteComplaint(${complaint.id})">删除</button>` :
+                    '<span class="text-muted">无操作</span>'}
                         </td>
                     </tr>
                 `;
-            });
-            
-            $('#complaintsTable').html(html);
+        });
+
+        $('#complaintsTable').html(html);
+    }
+
+    // 渲染分页
+    function renderPagination(total, currentPage, pageSize, status) {
+        const totalPages = Math.ceil(total / pageSize);
+        if (totalPages <= 1) {
+            $('#pagination').html('');
+            return;
         }
-        
-        // 渲染分页
-        function renderPagination(total, currentPage, pageSize, status) {
-            const totalPages = Math.ceil(total / pageSize);
-            if (totalPages <= 1) {
-                $('#pagination').html('');
-                return;
-            }
-            
-            let html = '<nav aria-label="Complaints pagination">';
-            html += '<ul class="pagination">';
-            
-            // 上一页
-            html += `
+
+        let html = '<nav aria-label="Complaints pagination">';
+        html += '<ul class="pagination">';
+
+        // 上一页
+        html += `
                 <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                     <a class="page-link" href="#" onclick="loadComplaints(${currentPage - 1}, '${status}')" aria-label="Previous">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
             `;
-            
-            // 页码
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                    html += `
+
+        // 页码
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                html += `
                         <li class="page-item ${i === currentPage ? 'active' : ''}">
                             <a class="page-link" href="#" onclick="loadComplaints(${i}, '${status}')">${i}</a>
                         </li>
                     `;
-                } else if ((i === currentPage - 2 || i === currentPage + 2) && totalPages > 5) {
-                    html += '<li class="page-item"><span class="page-link">...</span></li>';
-                }
+            } else if ((i === currentPage - 2 || i === currentPage + 2) && totalPages > 5) {
+                html += '<li class="page-item"><span class="page-link">...</span></li>';
             }
-            
-            // 下一页
-            html += `
+        }
+
+        // 下一页
+        html += `
                 <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                     <a class="page-link" href="#" onclick="loadComplaints(${currentPage + 1}, '${status}')" aria-label="Next">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>
             `;
-            
-            html += '</ul></nav>';
-            $('#pagination').html(html);
-        }
-        
-        // 显示投诉表单
-        function showComplaintForm() {
-            loadOrdersForComplaint();
-            $('#complaintModal').modal('show');
-        }
-        
-        // 加载可投诉的订单
-        function loadOrdersForComplaint() {
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: '/api/student/orders?status=completed',
-                type: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function(res) {
-                    if (res.code === 200) {
-                        const orderSelect = $('#complaint-order');
-                        orderSelect.empty();
-                        orderSelect.append('<option value="">无关联订单</option>');
-                        
-                        res.data.items.forEach(order => {
-                            orderSelect.append(`
-                                <option value="${order.id}">订单号：${order.id} - ${order.created_at}</option>
+
+        html += '</ul></nav>';
+        $('#pagination').html(html);
+    }
+
+    // 显示投诉表单
+    function showComplaintForm() {
+        loadOrdersForComplaint();
+        $('#complaintModal').modal('show');
+    }
+
+    // 加载可投诉的订单
+    function loadOrdersForComplaint() {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: '/api/student/orders?status=completed',
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    const orderSelect = $('#complaint-order');
+                    orderSelect.empty();
+                    orderSelect.append('<option value="">无关联订单</option>');
+
+                    res.data.items.forEach(order => {
+                        orderSelect.append(`
+                                <option value="${order.id}">订单号：${order.order_no} - ${order.created_at}</option>
                             `);
-                        });
-                    }
+                    });
                 }
-            });
-        }
-        
-        // 提交投诉
-        function submitComplaint() {
-            const content = $('#complaint-content').val().trim();
-            const orderId = $('#complaint-order').val();
-            
-            if (!content) {
-                alert('请输入投诉内容');
-                return;
             }
-            
-            if (content.length < 10) {
-                alert('投诉内容至少需要10个字符');
-                return;
+        });
+    }
+
+    // 提交投诉
+    function submitComplaint() {
+        const content = $('#complaint-content').val().trim();
+        const orderId = $('#complaint-order').val();
+
+        if (!content) {
+            alert('请输入投诉内容');
+            return;
+        }
+
+        if (content.length < 10) {
+            alert('投诉内容至少需要10个字符');
+            return;
+        }
+
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: '/api/student/complaints',
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            contentType: 'application/json',
+            data: JSON.stringify({
+                content: content,
+                order_id: orderId || null
+            }),
+            success: function (res) {
+                if (res.code === 200) {
+                    $('#complaintModal').modal('hide');
+                    $('#complaintForm')[0].reset();
+                    loadComplaints(1, 'all');
+                    alert('投诉提交成功！');
+                } else {
+                    alert('投诉提交失败：' + res.msg);
+                }
+            },
+            error: function () {
+                alert('网络错误，请稍后重试');
             }
-            
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: '/api/student/complaints',
-                type: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    content: content,
-                    order_id: orderId || null
-                }),
-                success: function(res) {
-                    if (res.code === 200) {
-                        $('#complaintModal').modal('hide');
-                        $('#complaintForm')[0].reset();
-                        loadComplaints(1, 'all');
-                        alert('投诉提交成功！');
-                    } else {
-                        alert('投诉提交失败：' + res.msg);
-                    }
-                },
-                error: function() {
-                    alert('网络错误，请稍后重试');
+        });
+    }
+
+    // 删除投诉
+    function deleteComplaint(complaintId) {
+        if (!confirm('确定要删除这条投诉吗？')) return;
+
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/complaints/${complaintId}`,
+            type: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    loadComplaints(1, 'all');
+                    alert('投诉删除成功！');
+                } else {
+                    alert('投诉删除失败：' + res.msg);
                 }
-            });
-        }
-        
-        // 删除投诉
-        function deleteComplaint(complaintId) {
-            if (!confirm('确定要删除这条投诉吗？')) return;
-            
-            const token = localStorage.getItem('student_token');
-            $.ajax({
-                url: `/api/student/complaints/${complaintId}`,
-                type: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function(res) {
-                    if (res.code === 200) {
-                        loadComplaints(1, 'all');
-                        alert('投诉删除成功！');
-                    } else {
-                        alert('投诉删除失败：' + res.msg);
-                    }
-                },
-                error: function() {
-                    alert('网络错误，请稍后重试');
-                }
-            });
-        }
-        
-        // 筛选投诉
-        function filterComplaints(status) {
-            // 更新按钮状态
-            $('.btn-outline-primary, .btn-outline-secondary').removeClass('active btn-outline-primary').addClass('btn-outline-secondary');
-            const btn = status === 'all' ? $('.btn-outline-secondary:first') : $(`button[onclick="filterComplaints('${status}')"]`);
-            btn.addClass('active btn-outline-primary').removeClass('btn-outline-secondary');
-            
-            // 重新加载投诉列表
-            loadComplaints(1, status);
-        }
-        
-        // 格式化日期
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-        
-        // 退出登录
-        function logout() {
-            localStorage.removeItem('student_token');
-            localStorage.removeItem('userInfo');
-            window.location.href = '/student/login';
-        }
-    </script>
-    
-    <!-- 投诉表单模态框 -->
-    <div class="modal fade" id="complaintModal" tabindex="-1" aria-labelledby="complaintModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="complaintModalLabel">提交投诉</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="complaintForm">
-                        <div class="mb-3">
-                            <label for="complaint-order" class="form-label">关联订单（可选）</label>
-                            <select class="form-select" id="complaint-order">
-                                <option value="">无关联订单</option>
-                                <!-- 订单选项将通过JavaScript动态加载 -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="complaint-content" class="form-label">投诉内容 <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="complaint-content" rows="5" placeholder="请详细描述您的投诉内容，至少10个字符"></textarea>
-                            <div class="form-text text-muted">请准确、客观地描述问题，以便我们更好地为您解决。</div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="submitComplaint()">提交投诉</button>
-                </div>
+            },
+            error: function () {
+                alert('网络错误，请稍后重试');
+            }
+        });
+    }
+
+    // 筛选投诉
+    function filterComplaints(status) {
+        // 更新按钮状态
+        $('.btn-outline-primary, .btn-outline-secondary').removeClass('active btn-outline-primary').addClass('btn-outline-secondary');
+        const btn = status === 'all' ? $('.btn-outline-secondary:first') : $(`button[onclick="filterComplaints('${status}')"]`);
+        btn.addClass('active btn-outline-primary').removeClass('btn-outline-secondary');
+
+        // 重新加载投诉列表
+        loadComplaints(1, status);
+    }
+
+    // 格式化日期
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // 退出登录
+    function logout() {
+        localStorage.removeItem('student_token');
+        localStorage.removeItem('userInfo');
+        window.location.href = '/student/login';
+    }
+</script>
+
+<!-- 投诉表单模态框 -->
+<div class="modal fade" id="complaintModal" tabindex="-1" aria-labelledby="complaintModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="complaintModalLabel">提交投诉</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <form id="complaintForm">
+                    <div class="mb-3">
+                        <label for="complaint-order" class="form-label">关联订单（可选）</label>
+                        <select class="form-select" id="complaint-order">
+                            <option value="">无关联订单</option>
+                            <!-- 订单选项将通过JavaScript动态加载 -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="complaint-content" class="form-label">投诉内容 <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control" id="complaint-content" rows="5"
+                            placeholder="请详细描述您的投诉内容，至少10个字符"></textarea>
+                        <div class="form-text text-muted">请准确、客观地描述问题，以便我们更好地为您解决。</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitComplaint()">提交投诉</button>
             </div>
         </div>
     </div>
+</div>
 {% endblock %}

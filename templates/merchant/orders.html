@@ -205,7 +205,7 @@
                         <div class="order-footer d-flex justify-content-between align-items-center">
                             <span>下单时间：${formatDate(order.create_time)}</span>
                             <div class="d-flex gap-2">
-                                <span class="text-danger fw-bold">总计：¥${order.total_amount.toFixed(2)}</span>
+                                <span class="text-danger fw-bold">总计：¥${order.pay_amount.toFixed(2)}</span>
                                 <button class="btn btn-sm btn-outline-primary" onclick="viewOrderDetail(${order.id})">查看详情</button>
                                 ${order.status === '待接单' ? `<button class="btn btn-sm btn-success" onclick="acceptOrder(${order.id})">接单</button>` : ''}
                                 ${order.status === '待配送' ? `<button class="btn btn-sm btn-success" onclick="completeOrder(${order.id})">送达</button>` : ''}

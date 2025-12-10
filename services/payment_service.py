@@ -1,5 +1,6 @@
 from datetime import datetime
 from models.order import Order
+from models.student import Student
 from models.merchant import Merchant
 from models.platform_config import PlatformConfig
 from app import db
@@ -15,6 +16,27 @@ def simulate_payment(order_id: int) -> tuple[bool, int]:
     # 模拟支付成功
     order.status = '待接单'  # 支付后订单状态改为待接单
     order.pay_time = datetime.now()
+    
+    # 从学生钱包扣除支付金额
+    student = Student.query.get(order.student_id)
+    if not student:
+        raise ValueError("学生不存在")
+    
+    # 检查学生钱包余额是否足够
+    if float(student.wallet) < float(order.pay_amount):
+        raise ValueError("学生钱包余额不足")
+    
+    # 扣除学生钱包金额
+    old_balance = float(student.wallet)
+    student.wallet = old_balance - float(order.pay_amount)
+    new_balance = float(student.wallet)
+    
+    # 添加学生钱包扣除日志
+    print(f"学生 {student.name} 钱包更新：")
+    print(f"  - 订单支付金额：¥{float(order.pay_amount):.2f}")
+    print(f"  - 原余额：¥{old_balance:.2f}")
+    print(f"  - 新余额：¥{new_balance:.2f}")
+    print(f"  - 本次扣除：¥{float(order.pay_amount):.2f}")
     
     # 标记优惠券为已使用
     from models.coupon import UserCoupon

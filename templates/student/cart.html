@@ -1728,31 +1728,52 @@
         let discountText = '';
 
         if (selectedCoupon) {
-            // 应用优惠券折扣
-            if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
-                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
-                const discountRate = couponValue / 10;
-                discountAmount = totalPrice * (1 - discountRate);
-                // 确保优惠金额不超过总价
-                if (discountAmount > totalPrice) {
-                    discountAmount = totalPrice;
-                }
-                // 显示为-XX%
-                const discountPercent = Math.round((1 - discountRate) * 100);
-                discountText = `- ${discountPercent}%`;
-            } else if (selectedCoupon.type === 'full_reduction' || selectedCoupon.type === 'no_threshold') {
-                discountAmount = selectedCoupon.value;
-                // 确保优惠金额不超过总价
-                if (discountAmount > totalPrice) {
-                    discountAmount = totalPrice;
-                }
-                // 显示为-¥XX
-                discountText = `-¥${discountAmount.toFixed(2)}`;
-            }
+            // 获取优惠券的商家ID
+            const couponMerchantId = selectedCoupon.merchant_id;
 
-            // 显示优惠信息
-            $('#confirmDiscountRow').show();
-            $('#confirmDiscountAmount').text(discountText);
+            // 计算优惠券对应商家的商品总价
+            let merchantTotal = 0;
+            cartItems.forEach(item => {
+                if (item.dish.merchant_id === couponMerchantId) {
+                    merchantTotal += item.dish.price * item.quantity;
+                }
+            });
+
+            const minSpend = parseFloat(selectedCoupon.min_spend) || 0;
+
+            // 只有当对应商家的商品总价满足最低消费要求时才应用优惠券
+            if (merchantTotal >= minSpend && merchantTotal > 0) {
+                // 根据优惠券类型计算折扣
+                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                    // 折扣券，如9表示9折，折扣金额为该商家商品总价的10%
+                    const discountRate = couponValue / 10;
+                    discountAmount = merchantTotal * (1 - discountRate);
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discountAmount > merchantTotal) {
+                        discountAmount = merchantTotal;
+                    }
+                    // 显示为-XX%
+                    const discountPercent = Math.round((1 - discountRate) * 100);
+                    discountText = `- ${discountPercent}%`;
+                } else {
+                    // 满减券或无门槛券，直接显示金额
+                    discountAmount = couponValue;
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discountAmount > merchantTotal) {
+                        discountAmount = merchantTotal;
+                    }
+                    // 显示为-¥XX
+                    discountText = `-¥${discountAmount.toFixed(2)}`;
+                }
+
+                // 显示优惠信息
+                $('#confirmDiscountRow').show();
+                $('#confirmDiscountAmount').text(discountText);
+            } else {
+                // 未满足最低消费或没有对应商家的商品，不应用优惠
+                $('#confirmDiscountRow').hide();
+            }
         } else {
             // 隐藏优惠信息
             $('#confirmDiscountRow').hide();
@@ -1834,15 +1855,39 @@
         let discountAmount = 0;
 
         if (selectedCoupon) {
-            // 应用优惠券折扣
-            if (selectedCoupon.type === 'full_reduction' || selectedCoupon.type === 'no_threshold') {
-                const minSpend = parseFloat(selectedCoupon.min_spend) || 0;
-                if (totalPrice >= minSpend) {
-                    discountAmount = selectedCoupon.value || selectedCoupon.discount_amount || 0;
+            // 获取优惠券的商家ID
+            const couponMerchantId = selectedCoupon.merchant_id;
+
+            // 计算优惠券对应商家的商品总价
+            let merchantTotal = 0;
+            cartItems.forEach(item => {
+                if (item.dish.merchant_id === couponMerchantId) {
+                    merchantTotal += item.dish.price * item.quantity;
                 }
-            } else if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+            });
+
+            const minSpend = parseFloat(selectedCoupon.min_spend) || 0;
+
+            // 只有当对应商家的商品总价满足最低消费要求时才应用优惠券
+            if (merchantTotal >= minSpend && merchantTotal > 0) {
+                // 根据优惠券类型计算折扣
                 const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
-                discountAmount = totalPrice * (1 - couponValue / 10);
+                if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                    // 折扣券，如9表示9折，折扣金额为该商家商品总价的10%
+                    const discountRate = couponValue / 10;
+                    discountAmount = merchantTotal * (1 - discountRate);
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discountAmount > merchantTotal) {
+                        discountAmount = merchantTotal;
+                    }
+                } else {
+                    // 满减券或无门槛券，直接显示金额
+                    discountAmount = couponValue;
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discountAmount > merchantTotal) {
+                        discountAmount = merchantTotal;
+                    }
+                }
             }
         }
 
@@ -1884,20 +1929,38 @@
         let discountAmount = 0;
 
         if (selectedCoupon) {
-            // 应用优惠券折扣（只对菜品费用进行折扣）
-            if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
-                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
-                const discountRate = couponValue / 10;
-                discountAmount = totalPrice * (1 - discountRate);
-                // 确保优惠金额不超过总价
-                if (discountAmount > totalPrice) {
-                    discountAmount = totalPrice;
+            // 获取优惠券的商家ID
+            const couponMerchantId = selectedCoupon.merchant_id;
+
+            // 计算优惠券对应商家的商品总价
+            let merchantTotal = 0;
+            cartItems.forEach(item => {
+                if (item.dish.merchant_id === couponMerchantId) {
+                    merchantTotal += item.dish.price * item.quantity;
                 }
-            } else if (selectedCoupon.type === 'full_reduction' || selectedCoupon.type === 'no_threshold') {
-                discountAmount = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
-                // 确保优惠金额不超过总价
-                if (discountAmount > totalPrice) {
-                    discountAmount = totalPrice;
+            });
+
+            const minSpend = parseFloat(selectedCoupon.min_spend) || 0;
+
+            // 只有当对应商家的商品总价满足最低消费要求时才应用优惠券
+            if (merchantTotal >= minSpend && merchantTotal > 0) {
+                // 根据优惠券类型计算折扣
+                const couponValue = parseFloat(selectedCoupon.value || selectedCoupon.discount_amount) || 0;
+                if (selectedCoupon.type === '折扣' || selectedCoupon.type === 'discount') {
+                    // 折扣券，如9表示9折，折扣金额为该商家商品总价的10%
+                    const discountRate = couponValue / 10;
+                    discountAmount = merchantTotal * (1 - discountRate);
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discountAmount > merchantTotal) {
+                        discountAmount = merchantTotal;
+                    }
+                } else {
+                    // 满减券或无门槛券，直接显示金额
+                    discountAmount = couponValue;
+                    // 确保优惠金额不超过该商家的商品总价
+                    if (discountAmount > merchantTotal) {
+                        discountAmount = merchantTotal;
+                    }
                 }
             }
         }

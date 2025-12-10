@@ -1344,6 +1344,28 @@ def cancel_order(order_id):
             print(f"  - 平台配送费新收入：¥{new_earnings:.2f}")
             print(f"  - 学生新余额：¥{student.wallet:.2f}")
         
+        # 如果订单使用了优惠券，需要返还优惠券
+        if order.coupon_id is not None:
+            # 查找用户优惠券记录
+            user_coupon = UserCoupon.query.filter_by(
+                student_id=user_id, 
+                coupon_id=order.coupon_id
+            ).first()
+            
+            if user_coupon and user_coupon.is_used:
+                # 返还优惠券
+                user_coupon.is_used = False
+                user_coupon.use_time = None
+                
+                # 更新优惠券使用数量
+                coupon = Coupon.query.get(order.coupon_id)
+                if coupon and coupon.used > 0:
+                    coupon.used -= 1
+                
+                print(f"订单 {order_id} 返还优惠券：")
+                print(f"  - 优惠券ID：{order.coupon_id}")
+                print(f"  - 用户优惠券ID：{user_coupon.id}")
+        
         # 将订单状态改为已取消
         order.status = '已取消'
         db.session.commit()

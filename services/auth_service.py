@@ -23,6 +23,8 @@ def student_login(login_id: str, password: str):
               Student.query.filter_by(phone=login_id).first()
     if not student:
         return {'error': '用户不存在'}
+    if not student.is_active:
+        return {'error': '您的账号已被禁用'}
     if not verify_password(password, student.password):
         return {'error': '密码错误'}
     return {

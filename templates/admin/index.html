@@ -92,6 +92,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3><i class="bi bi-list-check me-2"></i>待审核商户名单</h3>
                     <span class="badge bg-warning" id="pendingCount">0</span> <!-- 待审核数量 -->
+                    <span class="badge bg-success" id="approvedCount">0</span> <!-- 已通过数量 -->
+                    <span class="badge bg-danger" id="rejectedCount">0</span> <!-- 已驳回数量 -->
+                    <span class="badge bg-primary" id="studentCount">0</span> <!-- 学生数量 -->
                 </div>
                 <!-- 订单统计过滤选项 -->
 
@@ -373,29 +376,25 @@
 
         // 加载商户数据
         function loadMerchantData(tabType) {
-            let apiUrl, titleText, countBadge = $('#pendingCount');
+            let apiUrl, titleText;
 
             // 根据标签页类型设置API接口和标题
             switch (tabType) {
                 case 'pending':
                     apiUrl = '/api/admin/pending_merchants';
                     titleText = '待审核商户名单';
-                    countBadge.show();
                     break;
                 case 'approved':
                     apiUrl = '/api/admin/get_approved_merchants';
                     titleText = '已通过商户名单';
-                    countBadge.hide();
                     break;
                 case 'rejected':
                     apiUrl = '/api/admin/get_rejected_merchants';
                     titleText = '已驳回（已下架）商户名单';
-                    countBadge.hide();
                     break;
                 default:
                     apiUrl = '/api/admin/pending_merchants';
                     titleText = '待审核商户名单';
-                    countBadge.show();
             }
 
             // 更新页面标题
@@ -412,10 +411,19 @@
                 success: function (res) {
                     if (res.code === 200) {
                         const merchants = res.data;
-                        // 只有待审核页面才显示数量角标
+
+                        // 隐藏所有数量徽章
+                        $('#pendingCount, #approvedCount, #rejectedCount, #studentCount').hide();
+
+                        // 根据页面类型显示和更新相应的数量
                         if (tabType === 'pending') {
-                            countBadge.text(merchants.length);
+                            $('#pendingCount').text(merchants.length).show();
+                        } else if (tabType === 'approved') {
+                            $('#approvedCount').text(merchants.length).show();
+                        } else if (tabType === 'rejected') {
+                            $('#rejectedCount').text(merchants.length).show();
                         }
+
                         renderMerchantTable(merchants, tabType);  // 渲染表格，传递标签页类型
                     } else {
                         alert('获取数据失败：' + res.msg);
@@ -534,7 +542,6 @@
         function loadStudentData(filterType) {
             // 更新页面标题
             $('h3').html('<i class="bi bi-people me-2"></i>学生用户管理');
-            $('#pendingCount').hide();
 
             let apiUrl = '/api/admin/students';
             // 根据过滤类型添加查询参数
@@ -555,6 +562,11 @@
                 success: function (res) {
                     if (res.code === 200) {
                         const students = res.data;
+
+                        // 隐藏所有数量徽章，然后显示学生数量
+                        $('#pendingCount, #approvedCount, #rejectedCount, #studentCount').hide();
+                        $('#studentCount').text(students.length).show();
+
                         renderStudentTable(students);  // 渲染表格
                     } else {
                         alert('获取数据失败：' + res.msg);
@@ -760,6 +772,8 @@
 
         // 加载订单统计数据
         function loadOrderData() {
+            // 隐藏所有数量徽章
+            $('#pendingCount, #approvedCount, #rejectedCount, #studentCount').hide();
             let apiUrl = '/api/admin/orders';
 
             // 获取日期参数
@@ -1180,6 +1194,8 @@
 
         // 加载平台设置数据
         function loadSettingsData() {
+            // 隐藏所有数量徽章
+            $('#pendingCount, #approvedCount, #rejectedCount, #studentCount').hide();
             $.ajax({
                 url: '/api/admin/settings',
                 type: 'GET',

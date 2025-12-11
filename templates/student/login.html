@@ -80,8 +80,14 @@
                         alert(res.msg);
                     }
                 },
-                error: function () {
-                    alert('登录失败，请重试');
+                error: function (xhr) {
+                    // 尝试解析错误响应
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        alert(res.msg);
+                    } catch (e) {
+                        alert('登录失败，请重试');
+                    }
                 }
             });
         });

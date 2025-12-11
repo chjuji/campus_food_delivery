@@ -104,7 +104,7 @@
                             <button class="btn btn-outline-primary me-2"
                                 onclick="switchSettingsTab('order')">订单设置</button>
                             <button class="btn btn-outline-primary me-2"
-                                onclick="switchSettingsTab('merchant')">商户设置</button>
+                                onclick="switchSettingsTab('complaint')">投诉管理</button>
                             <button class="btn btn-outline-primary me-2"
                                 onclick="switchSettingsTab('system')">系统设置</button>
                             <button class="btn btn-outline-primary me-2"
@@ -118,11 +118,8 @@
                             </div>
                         </div>
 
-                        <!-- 操作按钮 -->
-                        <div class="mt-4 d-flex justify-content-end">
-                            <button class="btn btn-outline-secondary me-2" onclick="resetSettings()">重置</button>
-                            <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
-                        </div>
+                        <!-- 操作按钮将根据需要动态添加 -->
+                        <div id="settingsButtonsContainer"></div>
                     </div>
                 </div>
                 <div class="mb-4" id="orderFilters" style="display: none;">
@@ -990,6 +987,121 @@
             });
         }
 
+        // 加载管理员投诉列表
+        function loadAdminComplaints(status = 'all') {
+            const token = localStorage.getItem('admin_token');
+            $.ajax({
+                url: '/api/admin/complaints?status=' + status,
+                type: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                success: function (res) {
+                    if (res.code === 200) {
+                        renderAdminComplaintTable(res.data);
+                    } else {
+                        alert('获取投诉列表失败：' + res.msg);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('请求失败:', xhr.responseText);
+                    if (xhr.status === 401) {
+                        localStorage.removeItem('admin_token');
+                        window.location.href = '/admin/login';
+                    } else {
+                        alert('网络错误，获取投诉列表失败');
+                    }
+                }
+            });
+        }
+
+        // 筛选管理员投诉列表
+        function filterAdminComplaints(status) {
+            // 更新按钮状态
+            $('.btn-group button').removeClass('active');
+            $(`button[onclick="filterAdminComplaints('${status}')"]`).addClass('active');
+
+            // 加载筛选后的投诉列表
+            loadAdminComplaints(status);
+        }
+
+        // 渲染管理员投诉列表表格
+        function renderAdminComplaintTable(complaints) {
+            if (complaints.length === 0) {
+                $('#complaintTableBody').html('<tr><td colspan="9" class="text-center text-muted">暂无投诉记录</td></tr>');
+                return;
+            }
+
+            let html = '';
+            complaints.forEach(complaint => {
+                // 根据状态显示不同的标签
+                let statusBadge = '';
+                switch (complaint.status) {
+                    case '待处理':
+                        statusBadge = '<span class="badge bg-warning">待处理</span>';
+                        break;
+                    case '处理中':
+                        statusBadge = '<span class="badge bg-info">处理中</span>';
+                        break;
+                    case '已解决':
+                        statusBadge = '<span class="badge bg-success">已解决</span>';
+                        break;
+                    default:
+                        statusBadge = '<span class="badge bg-secondary">' + complaint.status + '</span>';
+                }
+
+                html += `
+                    <tr>
+                        <td>${complaint.id}</td>
+                        <td>${complaint.student_id}</td>
+                        <td>${complaint.merchant_id}</td>
+                        <td>${complaint.order_id || '-'}</td>
+                        <td class="text-truncate" style="max-width: 200px;" title="${complaint.content}">${complaint.content}</td>
+                        <td>${statusBadge}</td>
+                        <td>${complaint.create_time}</td>
+                        <td>${complaint.handle_time || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="deleteAdminComplaint(${complaint.id})">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            $('#complaintTableBody').html(html);
+        }
+
+        // 删除管理员投诉
+        function deleteAdminComplaint(complaintId) {
+            if (confirm('确定要删除这条投诉吗？')) {
+                const token = localStorage.getItem('admin_token');
+                $.ajax({
+                    url: `/api/admin/complaints/${complaintId}`,
+                    type: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    success: function (res) {
+                        if (res.code === 200) {
+                            // 重新加载当前筛选条件下的投诉列表
+                            const currentStatus = $('.btn-group button.active').attr('onclick').match(/filterAdminComplaints\('(.*?)'\)/)[1];
+                            loadAdminComplaints(currentStatus);
+                            alert('投诉删除成功！');
+                        } else {
+                            alert('投诉删除失败：' + res.msg);
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('请求失败:', xhr.responseText);
+                        if (xhr.status === 401) {
+                            localStorage.removeItem('admin_token');
+                            window.location.href = '/admin/login';
+                        } else {
+                            alert('网络错误，删除投诉失败');
+                        }
+                    }
+                });
+            }
+        }
+
         // 渲染优惠券表格
         function renderCouponsTable(userCoupons) {
             const tableBody = $('#couponTableBody');
@@ -1009,7 +1121,7 @@
                     <tr>
                         <td>${userCoupon.id}</td>
                         <td>${userCoupon.student_id}</td>
-                        <td>${userCoupon.student_name || '未知用户'}</td>
+                        <td>${userCoupon.student.name || '未知用户'}</td>
                         <td>${userCoupon.coupon_id}</td>
                         <td>${userCoupon.coupon_name}</td>
                         <td>¥${userCoupon.discount_amount.toFixed(2)}</td>
@@ -1077,8 +1189,7 @@
                 success: function (response) {
                     if (response.code === 200) {
                         settingsData = response.data;
-                        // 保存原始数据用于重置
-                        originalSettings = JSON.parse(JSON.stringify(response.data));
+
                         // 默认显示基本信息标签
                         switchSettingsTab('basic');
                     } else {
@@ -1107,8 +1218,112 @@
         function renderSettingsPanel(category) {
             let html = '';
 
+            // 特殊处理投诉评论管理
+            if (category === 'complaint') {
+                // 显示投诉评论管理界面
+                html = `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5>投诉评论</h5>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- 标签页切换 -->
+                            <div class="mb-4">
+                                <ul class="nav nav-tabs" id="adminContentTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="adminComplaints-tab" data-bs-toggle="tab"
+                                            data-bs-target="#adminComplaints" type="button" role="tab" aria-controls="adminComplaints"
+                                            aria-selected="true">投诉列表</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="adminComments-tab" data-bs-toggle="tab" data-bs-target="#adminComments"
+                                            type="button" role="tab" aria-controls="adminComments" aria-selected="false">评论列表</button>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- 标签页内容 -->
+                            <div class="tab-content" id="adminContentTabsContent">
+                                <!-- 投诉列表 -->
+                                <div class="tab-pane fade show active" id="adminComplaints" role="tabpanel" aria-labelledby="adminComplaints-tab">
+                                    <div class="mb-4">
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary active" onclick="filterAdminComplaints('all')">全部</button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="filterAdminComplaints('待处理')">待处理</button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="filterAdminComplaints('处理中')">处理中</button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="filterAdminComplaints('已解决')">已解决</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>投诉ID</th>
+                                                    <th>学生ID</th>
+                                                    <th>商户ID</th>
+                                                    <th>订单ID</th>
+                                                    <th>投诉内容</th>
+                                                    <th>投诉状态</th>
+                                                    <th>投诉时间</th>
+                                                    <th>处理时间</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="complaintTableBody">
+                                                <!-- 投诉数据将通过JavaScript动态加载 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 评论列表 -->
+                                <div class="tab-pane fade" id="adminComments" role="tabpanel" aria-labelledby="adminComments-tab">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>评论内容</th>
+                                                    <th>涉及订单</th>
+                                                    <th>菜品评分</th>
+                                                    <th>服务评分</th>
+                                                    <th>评论时间</th>
+                                                    <th>商家回复</th>
+                                                    <th>回复时间</th>
+                                                    <th>学生ID</th>
+                                                    <th>商户ID</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="commentsTableBody">
+                                                <!-- 评论数据将通过JavaScript动态加载 -->
+                                                <tr>
+                                                    <td colspan="10" class="text-center text-muted">
+                                                        加载中...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-4 d-flex justify-content-center" id="commentsPagination">
+                                        <!-- 评论分页控件将通过JavaScript动态生成 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('#settingsContent').html(html);
+                loadAdminComplaints(); // 加载投诉数据
+                loadAdminComments(); // 加载评论数据
+                // 清空操作按钮容器
+                $('#settingsButtonsContainer').empty();
+            }
             // 特殊处理优惠券管理
-            if (category === 'coupons') {
+            else if (category === 'coupons') {
                 // 显示用户领取的优惠券列表
                 html = `
                     <div class="card">
@@ -1143,6 +1358,8 @@
                 `;
                 $('#settingsContent').html(html);
                 loadCoupons(); // 加载优惠券数据
+                // 清空操作按钮容器
+                $('#settingsButtonsContainer').empty();
             } else {
                 // 原有的设置项渲染逻辑
                 const configs = settingsData[category] || [];
@@ -1166,6 +1383,13 @@
                 }
 
                 $('#settingsContent').html(html);
+                // 添加保存按钮
+                const buttonsHtml = `
+                    <div class="mt-4 d-flex justify-content-end" id="settingsButtons">
+                        <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+                    </div>
+                `;
+                $('#settingsButtonsContainer').html(buttonsHtml);
             }
         }
 
@@ -1324,13 +1548,194 @@
             });
         }
 
-        // 重置设置
-        function resetSettings() {
-            if (confirm('确定要重置当前设置吗？')) {
-                settingsData = JSON.parse(JSON.stringify(originalSettings));
-                renderSettingsPanel(currentSettingsTab);
-                alert('设置已重置');
+
+
+        // 评论管理相关函数
+        let currentCommentsPage = 1;
+        const commentsPerPage = 10;
+
+        // 加载评论数据
+        function loadAdminComments(page = 1) {
+            currentCommentsPage = page;
+            const url = `/api/admin/comments?page=${page}&page_size=${commentsPerPage}`;
+            const token = localStorage.getItem('admin_token');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`  // JWT认证头
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.code === 200) {
+                        renderAdminCommentsList(response.data.items);
+                        renderAdminCommentsPagination(response.data.total, page);
+                    } else {
+                        console.error('加载评论数据失败:', response.msg);
+                        $('#commentsTableBody').html('<tr><td colspan="10" class="text-center text-danger">加载评论数据失败: ' + response.msg + '</td></tr>');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('加载评论数据时发生错误:', error);
+                    $('#commentsTableBody').html('<tr><td colspan="10" class="text-center text-danger">加载评论数据时发生错误: ' + error + '</td></tr>');
+                }
+            });
+        }
+
+        // 删除评论
+        function deleteAdminComment(commentId) {
+            if (confirm('确定要删除这条评论吗？')) {
+                const token = localStorage.getItem('admin_token');
+                const url = `/api/admin/comments/${commentId}`;
+
+                $.ajax({
+                    url: url,
+                    type: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`  // JWT认证头
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.code === 200) {
+                            // 重新加载当前页的评论数据
+                            loadAdminComments(currentCommentsPage);
+                            showSuccessMessage('评论删除成功');
+                        } else {
+                            console.error('删除评论失败:', response.msg);
+                            showErrorMessage('删除评论失败: ' + response.msg);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('删除评论时发生错误:', error);
+                        showErrorMessage('删除评论时发生错误: ' + error);
+                    }
+                });
             }
+        }
+
+        // 渲染评论列表
+        function renderAdminCommentsList(comments) {
+            let html = '';
+
+            if (comments.length === 0) {
+                html = '<tr><td colspan="10" class="text-center text-muted">暂无评论数据</td></tr>';
+            } else {
+                comments.forEach(comment => {
+                    // 渲染菜品评分星级
+                    const foodStars = renderAdminStars(comment.dish_score);
+                    // 渲染服务评分星级
+                    const serviceStars = renderAdminStars(comment.service_score);
+                    // 处理商家回复
+                    const replyContent = comment.merchant_reply ? comment.merchant_reply : '<span class="text-muted">未回复</span>';
+                    // 处理回复时间
+                    const replyTime = comment.reply_time ? comment.reply_time : '-';
+                    // 处理评论时间
+                    const createTime = comment.create_time;
+
+                    html += `
+                        <tr>
+                            <td>${comment.content}</td>
+                            <td>${comment.order_no}</td>
+                            <td>${foodStars}</td>
+                            <td>${serviceStars}</td>
+                            <td>${createTime}</td>
+                            <td>${replyContent}</td>
+                            <td>${replyTime}</td>
+                            <td>${comment.student_id}</td>
+                            <td>${comment.merchant_id}</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="deleteAdminComment(${comment.id})">删除</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            $('#commentsTableBody').html(html);
+        }
+
+        // 渲染星级评分
+        function renderAdminStars(score) {
+            let stars = '';
+            const fullStars = Math.floor(score);
+            const hasHalfStar = score % 1 >= 0.5;
+
+            // 渲染完整星级
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="bi bi-star-fill text-warning"></i>';
+            }
+
+            // 渲染半星
+            if (hasHalfStar) {
+                stars += '<i class="bi bi-star-half text-warning"></i>';
+            }
+
+            // 渲染空星
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="bi bi-star text-warning"></i>';
+            }
+
+            stars += `<span class="ms-1">${score}</span>`;
+            return stars;
+        }
+
+        // 渲染评论分页控件
+        function renderAdminCommentsPagination(totalComments, currentPage) {
+            const totalPages = Math.ceil(totalComments / commentsPerPage);
+            let html = '';
+
+            if (totalPages <= 1) {
+                $('#commentsPagination').html('');
+                return;
+            }
+
+            html += '<ul class="pagination">';
+
+            // 上一页按钮
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <button class="page-link" onclick="loadAdminComments(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                </li>
+            `;
+
+            // 页码按钮
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                html += `<li class="page-item"><button class="page-link" onclick="loadAdminComments(1)">1</button></li>`;
+                if (startPage > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <button class="page-link" onclick="loadAdminComments(${i})">${i}</button>
+                    </li>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+                html += `<li class="page-item"><button class="page-link" onclick="loadAdminComments(${totalPages})">${totalPages}</button></li>`;
+            }
+
+            // 下一页按钮
+            html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <button class="page-link" onclick="loadAdminComments(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+                </li>
+            `;
+
+            html += '</ul>';
+
+            $('#commentsPagination').html(html);
         }
     </script>
 </body>

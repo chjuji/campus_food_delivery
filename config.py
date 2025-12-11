@@ -26,7 +26,8 @@ class Config:
         'dish': os.path.join(STATIC_FOLDER, 'uploads/dish'),
         'merchant': os.path.join(STATIC_FOLDER, 'uploads/merchant'),
         'avatar': os.path.join(STATIC_FOLDER, 'uploads/avatar'),
-        'system': os.path.join(STATIC_FOLDER, 'uploads/system')
+        'system': os.path.join(STATIC_FOLDER, 'uploads/system'),
+        'comment': os.path.join(STATIC_FOLDER, 'uploads/comments')
     }
 
     # 允许的文件格式

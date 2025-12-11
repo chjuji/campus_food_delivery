@@ -34,7 +34,7 @@
             <i class="fas fa-clipboard-list float-end"></i>
             <div class="stat-label">今日订单</div>
             <h3 id="todayOrders">0</h3>
-            <small>较昨日 <span class="text-white opacity-80">+0</span></small>
+            <!-- <small>较昨日 <span class="text-white opacity-80">+0</span></small> -->
         </div>
     </div>
     <div class="col-md-3">
@@ -42,7 +42,7 @@
             <i class="fas fa-yen-sign float-end"></i>
             <div class="stat-label">今日收入</div>
             <h3 id="todayIncome">¥0.00</h3>
-            <small>较昨日 <span class="text-white opacity-80">+¥0.00</span></small>
+            <!-- <small>较昨日 <span class="text-white opacity-80">+¥0.00</span></small> -->
         </div>
     </div>
     <div class="col-md-3">
@@ -50,7 +50,7 @@
             <i class="fas fa-clock float-end"></i>
             <div class="stat-label">待处理订单</div>
             <h3 id="pendingOrders">0</h3>
-            <small>需要及时处理</small>
+            <!-- <small>需要及时处理</small> -->
         </div>
     </div>
     <div class="col-md-3">
@@ -58,10 +58,36 @@
             <i class="fas fa-store float-end"></i>
             <div class="stat-label">在售菜品</div>
             <h3 id="activeDishes">0</h3>
-            <small>共 {{ total_dishes|default(0) }} 个菜品</small>
+            <!-- <small>共 {{ total_dishes|default(0) }} 个菜品</small> -->
         </div>
     </div>
 </div>
+<!-- 回复评论悬浮框 -->
+<div class="modal fade" id="replyCommentModal" tabindex="-1" aria-labelledby="replyCommentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="replyCommentModalLabel">回复评论</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="replyCommentForm">
+                    <input type="hidden" id="commentIdToReply">
+                    <div class="mb-3">
+                        <label for="replyContent" class="form-label">回复内容</label>
+                        <textarea class="form-control" id="replyContent" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitReply()">提交回复</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 优惠券编辑悬浮框 -->
 <div class="modal fade" id="couponModal" tabindex="-1" aria-labelledby="couponModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -227,6 +253,81 @@
         </div>
     </div>
 </div>
+
+<!-- 投诉列表 -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>投诉列表</h5>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary active"
+                        onclick="filterComplaints('all')">全部</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('待处理')">待处理</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('处理中')">处理中</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('已解决')">已解决</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>投诉ID</th>
+                                <th>订单ID</th>
+                                <th>投诉内容</th>
+                                <th>状态</th>
+                                <th>投诉时间</th>
+                                <th>处理时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="complaintsTable">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 评论列表 -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>评论列表</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>评论ID</th>
+                                <th>订单ID</th>
+                                <th>评论内容</th>
+                                <th>菜品评分</th>
+                                <th>服务评分</th>
+                                <th>评论时间</th>
+                                <th>商家回复</th>
+                                <th>回复时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commentsTable">
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -252,6 +353,8 @@
         loadRecentOrders();
         loadCoupons();
         loadPopularDishes();
+        loadComplaints();
+        loadComments();
 
         // 定时刷新数据
         setInterval(loadStatistics, 60000);
@@ -726,6 +829,330 @@
                     }
                     $('#popularDishesTable').html(html);
                 }
+            }
+        });
+    }
+
+    // 加载投诉列表
+    function loadComplaints(status = 'all') {
+        $.ajax({
+            url: '/api/merchant/complaints?status=' + status,
+            type: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('merchant_token')
+            },
+            success: function (response) {
+                if (response.success) {
+                    renderComplaintsTable(response.data);
+                } else {
+                    $('#complaintsTable').html('<tr><td colspan="7" class="text-center text-danger">加载投诉列表失败：' + response.message + '</td></tr>');
+                }
+            },
+            error: function (xhr) {
+                let errorMessage = '加载投诉列表失败';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.message || errorMessage;
+                } catch (e) { }
+                $('#complaintsTable').html('<tr><td colspan="7" class="text-center text-danger">' + errorMessage + '</td></tr>');
+            }
+        });
+    }
+
+    // 筛选投诉列表
+    function filterComplaints(status) {
+        // 更新按钮状态
+        $('.btn-group button').removeClass('active');
+        $(`button[onclick="filterComplaints('${status}')"]`).addClass('active');
+
+        // 加载筛选后的投诉列表
+        loadComplaints(status);
+    }
+
+    // 加载评论列表
+    function loadComments() {
+        $.ajax({
+            url: '/api/merchant/comments',
+            type: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('merchant_token')
+            },
+            success: function (response) {
+                if (response.success) {
+                    renderCommentsTable(response.data);
+                } else {
+                    $('#commentsTable').html('<tr><td colspan="9" class="text-center text-danger">加载评论列表失败：' + response.message + '</td></tr>');
+                }
+            },
+            error: function (xhr) {
+                let errorMessage = '加载评论列表失败';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.message || errorMessage;
+                } catch (e) { }
+                $('#commentsTable').html('<tr><td colspan="9" class="text-center text-danger">' + errorMessage + '</td></tr>');
+            }
+        });
+    }
+
+    // 渲染评论列表表格
+    function renderCommentsTable(comments) {
+        if (comments.length === 0) {
+            $('#commentsTable').html('<tr><td colspan="9" class="text-center text-muted">暂无评论记录</td></tr>');
+            return;
+        }
+
+        let html = '';
+        comments.forEach(comment => {
+            // 生成评分星星
+            let dishStars = generateStars(comment.dish_score);
+            let serviceStars = generateStars(comment.service_score);
+
+            // 处理商家回复
+            let replyContent = comment.merchant_reply || '-';
+            let replyTime = comment.reply_time || '-';
+
+            html += `
+                <tr>
+                    <td>${comment.id}</td>
+                    <td>${comment.order_no}</td>
+                    <td>${comment.content || '-'}</td>
+                    <td>${dishStars}</td>
+                    <td>${serviceStars}</td>
+                    <td>${comment.create_time}</td>
+                    <td>${replyContent}</td>
+                    <td>${replyTime}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="replyToComment(${comment.id})">回复</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        $('#commentsTable').html(html);
+    }
+
+    // 生成评分星星
+    function generateStars(score) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= score) {
+                stars += '<i class="fas fa-star text-warning"></i>';
+            } else {
+                stars += '<i class="far fa-star text-secondary"></i>';
+            }
+        }
+        return stars;
+    }
+
+    // 回复评论 - 打开模态框
+    function replyToComment(commentId) {
+        // 设置要回复的评论ID
+        document.getElementById('commentIdToReply').value = commentId;
+        // 清空之前的回复内容
+        document.getElementById('replyContent').value = '';
+        // 显示模态框
+        var replyModal = new bootstrap.Modal(document.getElementById('replyCommentModal'));
+        replyModal.show();
+    }
+
+    // 提交回复
+    function submitReply() {
+        // 获取评论ID和回复内容
+        var commentId = document.getElementById('commentIdToReply').value;
+        var replyContent = document.getElementById('replyContent').value;
+
+        // 详细验证
+        if (!replyContent.trim()) {
+            alert('回复内容不能为空');
+            return;
+        }
+
+        if (replyContent.length < 5) {
+            alert('回复内容不能少于5个字符');
+            return;
+        }
+
+        if (replyContent.length > 200) {
+            alert('回复内容不能超过200个字符');
+            return;
+        }
+
+        // 检查是否包含敏感词或不当内容（这里可以根据实际需求添加更多验证规则）
+        var sensitiveWords = ['垃圾', '差评', '恶心', '投诉'];
+        for (var i = 0; i < sensitiveWords.length; i++) {
+            if (replyContent.indexOf(sensitiveWords[i]) !== -1) {
+                alert('回复内容包含不当词汇，请修改后再提交');
+                return;
+            }
+        }
+
+        // 发送AJAX请求提交回复
+        $.ajax({
+            url: '/api/merchant/comments/' + commentId + '/reply',
+            type: 'POST',
+            data: {
+                reply_content: replyContent
+            },
+            success: function (res) {
+                if (res.success) {
+                    // 关闭模态框
+                    var replyModal = bootstrap.Modal.getInstance(document.getElementById('replyCommentModal'));
+                    replyModal.hide();
+                    // 重新加载评论列表
+                    loadComments();
+                    // 显示成功提示
+                    alert('回复成功');
+                } else {
+                    alert('回复失败：' + res.message);
+                }
+            },
+            error: function () {
+                alert('网络错误，请稍后重试');
+            }
+        });
+    }
+
+    // 渲染投诉列表表格
+    function renderComplaintsTable(complaints) {
+        if (complaints.length === 0) {
+            $('#complaintsTable').html('<tr><td colspan="7" class="text-center text-muted">暂无投诉记录</td></tr>');
+            return;
+        }
+
+        let html = '';
+        complaints.forEach(complaint => {
+            // 根据状态显示不同的标签
+            let statusBadge = '';
+            switch (complaint.status) {
+                case '待处理':
+                    statusBadge = '<span class="badge bg-warning">待处理</span>';
+                    break;
+                case '处理中':
+                    statusBadge = '<span class="badge bg-info">处理中</span>';
+                    break;
+                case '已解决':
+                    statusBadge = '<span class="badge bg-success">已解决</span>';
+                    break;
+                default:
+                    statusBadge = '<span class="badge bg-secondary">' + complaint.status + '</span>';
+            }
+
+            // 根据状态显示不同的操作按钮
+            let actionButtons = '';
+            if (complaint.status === '待处理') {
+                actionButtons = `<button class="btn btn-sm btn-primary" onclick="acceptComplaint(${complaint.id})">接受投诉</button>`;
+            } else if (complaint.status === '处理中') {
+                actionButtons = `<button class="btn btn-sm btn-success" onclick="resolveComplaint(${complaint.id})">解决投诉</button>`;
+            } else {
+                actionButtons = '<span class="text-muted">已解决</span>';
+            }
+
+            html += `
+                <tr>
+                    <td>${complaint.id}</td>
+                    <td>${complaint.order_no || '-'}</td>
+                    <td class="text-truncate" style="max-width: 200px;" title="${complaint.content}">${complaint.content}</td>
+                    <td>${statusBadge}</td>
+                    <td>${complaint.create_time}</td>
+                    <td>${complaint.handle_time || '-'}</td>
+                    <td>${actionButtons}</td>
+                </tr>
+            `;
+        });
+        $('#complaintsTable').html(html);
+    }
+
+    // 接受投诉
+    function acceptComplaint(complaintId) {
+        if (confirm('确定要接受这个投诉吗？')) {
+            $.ajax({
+                url: `/api/merchant/complaints/${complaintId}/accept`,
+                type: 'POST',
+                contentType: 'application/json',
+                success: function (response) {
+                    if (response.success) {
+                        // 重新加载当前筛选条件下的投诉列表
+                        const currentStatus = $('.btn-group button.active').attr('onclick').match(/filterComplaints\('(.*?)'\)/)[1];
+                        loadComplaints(currentStatus);
+                        alert('投诉已接受');
+                    } else {
+                        alert('操作失败：' + response.message);
+                    }
+                },
+                error: function (xhr) {
+                    let errorMessage = '操作失败';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage = response.message || errorMessage;
+                    } catch (e) { }
+                    alert(errorMessage);
+                }
+            });
+        }
+    }
+
+    // 解决投诉
+    function resolveComplaint(complaintId) {
+        if (confirm('确定要标记这个投诉为已解决吗？')) {
+            $.ajax({
+                url: `/api/merchant/complaints/${complaintId}/resolve`,
+                type: 'POST',
+                contentType: 'application/json',
+                success: function (response) {
+                    if (response.success) {
+                        alert('投诉已接受！');
+                        // 重新加载投诉列表
+                        loadComplaints();
+                    } else {
+                        alert('接受投诉失败：' + response.message);
+                    }
+                },
+                error: function (xhr) {
+                    let errorMessage = '接受投诉失败';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage = response.message || errorMessage;
+                    } catch (e) { }
+                    alert(errorMessage);
+                }
+            });
+        }
+    }
+
+    // 解决投诉
+    function resolveComplaint(complaintId) {
+        const handleResult = prompt('请输入投诉处理结果：');
+        if (handleResult === null) {
+            return; // 用户取消输入
+        }
+        if (handleResult.trim() === '') {
+            alert('处理结果不能为空！');
+            return;
+        }
+
+        $.ajax({
+            url: `/api/merchant/complaints/${complaintId}/resolve`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ handle_result: handleResult }),
+            success: function (response) {
+                if (response.success) {
+                    // 重新加载当前筛选条件下的投诉列表
+                    const currentStatus = $('.btn-group button.active').attr('onclick').match(/filterComplaints\('(.*?)'\)/)[1];
+                    loadComplaints(currentStatus);
+                    alert('投诉已解决！');
+                } else {
+                    alert('解决投诉失败：' + response.message);
+                }
+            },
+            error: function (xhr) {
+                let errorMessage = '解决投诉失败';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.message || errorMessage;
+                } catch (e) { }
+                alert(errorMessage);
             }
         });
     }

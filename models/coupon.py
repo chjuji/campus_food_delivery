@@ -33,6 +33,9 @@ class UserCoupon(db.Model):
     use_time = db.Column(db.DateTime, comment='使用时间')
     get_time = db.Column(db.DateTime, default=datetime.now, comment='领取时间')
 
+    # 关联关系
+    student = db.relationship('Student', backref='user_coupons', lazy=True)
+
     __table_args__ = (db.UniqueConstraint('student_id', 'coupon_id', name='unique_user_coupon'),)
 
     def __repr__(self):

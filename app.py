@@ -118,7 +118,11 @@ def create_app():
     # 学生端页面
     @app.route('/student/login')
     def student_login_page():
-        return render_template('student/login.html')  # 对应templates/student/login.html
+        # 检查系统是否处于维护中
+        from models.platform_config import PlatformConfig
+        maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+        is_maintenance = maintenance_config and maintenance_config.config_value.lower() == 'true'
+        return render_template('student/login.html', is_maintenance=is_maintenance)  # 对应templates/student/login.html
 
     @app.route('/student/register')
     def student_register_page():
@@ -155,7 +159,11 @@ def create_app():
     # 商户端页面
     @app.route('/merchant/login')
     def merchant_login_page():
-        return render_template('merchant/login.html')
+        # 检查系统是否处于维护中
+        from models.platform_config import PlatformConfig
+        maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+        is_maintenance = maintenance_config and maintenance_config.config_value.lower() == 'true'
+        return render_template('merchant/login.html', is_maintenance=is_maintenance)
 
     @app.route('/merchant/register')
     def merchant_register_page():
@@ -421,6 +429,7 @@ def create_app():
         platform_logo = PlatformConfig.get_by_key('platform_logo')
         contact_email = PlatformConfig.get_by_key('contact_email')
         platform_desc = PlatformConfig.get_by_key('platform_desc')
+        system_maintenance = PlatformConfig.get_by_key('system_maintenance')
         
         # 构建配置字典
         platform_info = {
@@ -431,7 +440,12 @@ def create_app():
             'platform_desc': platform_desc.config_value if platform_desc else '为校园师生提供便捷的餐饮服务'
         }
         
-        return render_template('home/index.html', platform_info=platform_info)
+        # 判断系统是否处于维护中
+        is_maintenance = False
+        if system_maintenance and system_maintenance.config_value.lower() == 'true':
+            is_maintenance = True
+        
+        return render_template('home/index.html', platform_info=platform_info, is_maintenance=is_maintenance)
     
     return app
 

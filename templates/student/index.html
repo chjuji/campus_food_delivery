@@ -9,7 +9,7 @@
 <li><a href="/student/cart">购物车</a></li>
 <li><a href="/student/orders">我的订单</a></li>
 <li><a href="/student/profile">个人信息</a></li>
-<li><a href="/student/complaints">我的投诉</a></li>
+<li><a href="/student/complaints">投诉评论</a></li>
 {% endblock %}
 
 {% block content %}
@@ -88,7 +88,7 @@
             height: 48px;
         }
     }
-    <!-- 配合少量 CSS 控制切换（可写在全局样式中）-->
+
     /* 展开状态：显示向下箭头，隐藏向上箭头 */
     .btn[aria-expanded="true"] .expand-icon {
         display: inline;
@@ -409,7 +409,10 @@
                                         <span class="text-muted ms-2">${dish.merchant_name}</span>
                                     </div>
                                     <div class="mt-2 d-flex justify-content-between align-items-center">
-                                        <button class="btn btn-primary btn-sm" onclick="viewMerchantDetails(${dish.merchant_id})">查看商家</button>
+                                        <div>
+                                            <button class="btn btn-primary btn-sm me-2" onclick="viewMerchantDetails(${dish.merchant_id})">查看商家</button>
+                                            <button class="btn btn-outline-primary btn-sm" onclick="viewDishComments(${dish.id})"><i class="bi bi-chat-left-text mr-2"></i>查看评论</button>
+                                        </div>
                                         <div class="quantity-control" id="quantity-control-${dish.id}">
                                             <button class="btn btn-sm btn-outline-secondary decrease-btn" onclick="updateDishQuantity(${dish.id}, -1)" style="float: left;">-</button>
                                             <span class="quantity-value mx-2" style="display: inline-block; min-width: 30px; text-align: center;">0</span>
@@ -668,13 +671,18 @@
                                 <div class="card-body">
                                     <h5 class="card-title">${dish.name}</h5>
                                     <p class="card-text text-muted small mb-3">${dish.description || '暂无描述'}</p>
-                                    <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
                                         <span class="text-danger font-bold">¥${dish.price}</span>
-                                        <div class="quantity-control" id="quantity-control-${dish.id}" style="display: flex; align-items: center;">
-                                        <button class="btn btn-sm btn-outline-secondary decrease-btn" onclick="updateDishQuantity(${dish.id}, -1)" style="float: left;">-</button>
-                                        <span class="quantity-value mx-2" style="display: inline-block; min-width: 30px; text-align: center;">0</span>
-                                        <button class="btn btn-sm btn-outline-secondary increase-btn" onclick="updateDishQuantity(${dish.id}, 1)" style="float: right;">+</button>
                                     </div>
+                                    <div class="d-flex justify-content-between">
+                                        <button onclick="viewDishComments(${dish.id})" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-chat-left-text mr-2"></i>查看评论
+                                        </button>
+                                        <div class="quantity-control" id="quantity-control-${dish.id}" style="display: flex; align-items: center;">
+                                            <button class="btn btn-sm btn-outline-secondary decrease-btn" onclick="updateDishQuantity(${dish.id}, -1)" style="float: left;">-</button>
+                                            <span class="quantity-value mx-2" style="display: inline-block; min-width: 30px; text-align: center;">0</span>
+                                            <button class="btn btn-sm btn-outline-secondary increase-btn" onclick="updateDishQuantity(${dish.id}, 1)" style="float: right;">+</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -887,12 +895,12 @@
 
                         // 渲染购物车菜品
                         cartItems.forEach(item => {
-                                const quantity = item.quantity || 1;
-                                const dish = item.dish || {};
-                                const itemTotal = (dish.price || 0) * quantity;
-                                totalPrice += itemTotal;
+                            const quantity = item.quantity || 1;
+                            const dish = item.dish || {};
+                            const itemTotal = (dish.price || 0) * quantity;
+                            totalPrice += itemTotal;
 
-                                const cartItemHtml = `
+                            const cartItemHtml = `
                                 <div class="cart-item mb-3 p-2 border rounded" data-id="${item.id}" data-dish-id="${dish.id}">
                                     <div class="d-flex align-items-center">
                                         <div class="flex-grow-1">
@@ -908,17 +916,17 @@
                                 </div>
                             `;
 
-                                cartItemsList.append(cartItemHtml);
-                            });
+                            cartItemsList.append(cartItemHtml);
+                        });
 
-                            // 更新合计价格
-                            $('#totalPrice').text(`¥${totalPrice.toFixed(2)}`);
-                        }
+                        // 更新合计价格
+                        $('#totalPrice').text(`¥${totalPrice.toFixed(2)}`);
+                    }
                     // 更新菜品数量显示，确保购物车和菜品栏数量同步
                     initDishQuantities();
-                    }
                 }
-            });
+            }
+        });
     }
 
     // 更新购物车菜品数量
@@ -1341,5 +1349,122 @@
         updateDishQuantity(dishId, 1);
     }
 
+    // 查看菜品评论
+    function viewDishComments(dishId) {
+        // 显示模态框
+        const modal = new bootstrap.Modal(document.getElementById('dishCommentsModal'));
+        modal.show();
+
+        // 加载评论
+        loadDishComments(dishId);
+    }
+
+    // 加载菜品评论
+    function loadDishComments(dishId) {
+        $.ajax({
+            url: `/api/common/dish_comments/${dishId}`,
+            type: 'GET',
+            success: function (res) {
+                if (res.code === 200) {
+                    renderDishCommentsList(res.data);
+                } else {
+                    $('#dishCommentsList').html('<div class="text-center text-muted py-4">加载评论失败：' + (res.msg || '未知错误') + '</div>');
+                }
+            },
+            error: function () {
+                $('#dishCommentsList').html('<div class="text-center text-muted py-4">网络错误，加载评论失败</div>');
+            }
+        });
+    }
+
+    // 渲染菜品评论列表
+    function renderDishCommentsList(comments) {
+        if (!comments || comments.length === 0) {
+            $('#dishCommentsList').html('<div class="text-center text-muted py-4">暂无评论</div>');
+            return;
+        }
+
+        let html = '';
+        comments.forEach(comment => {
+            html += `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="text-primary me-2">订单号：${comment.order_no || '-'}</span>
+                                        <span class="text-muted">${comment.create_time || '-'}</span>
+                                    </div>
+                                    <div class="mt-1">
+                                        <span class="text-warning">
+                                            ${renderStars(comment.dish_score)} 菜品评分
+                                        </span>
+                                        <span class="text-warning ms-3">
+                                            ${renderStars(comment.service_score)} 服务评分
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="card-text mb-2">${comment.content || '-'}</p>
+                            
+                            ${comment.img_urls && comment.img_urls.length > 0 ? `
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    ${comment.img_urls.map(img => `
+                                        <img src="/static/${img}" alt="评论图片" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            ${comment.merchant_reply ? `
+                                <div class="mt-3 p-3 bg-light rounded">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="font-weight-bold">商家回复：</span>
+                                        <span class="text-muted small">${comment.reply_time || '-'}</span>
+                                    </div>
+                                    <p class="mb-0">${comment.merchant_reply}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+        });
+
+        $('#dishCommentsList').html(html);
+    }
+
+    // 渲染星级评分
+    function renderStars(score) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= score) {
+                stars += '<i class="fa fa-star"></i>';
+            } else {
+                stars += '<i class="fa fa-star-o"></i>';
+            }
+        }
+        return stars;
+    }
 </script>
+
+<!-- 菜品评论模态框 -->
+<div class="modal fade" id="dishCommentsModal" tabindex="-1" aria-labelledby="dishCommentsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dishCommentsModalLabel">菜品评论</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dishCommentsList">
+                    <!-- 评论列表将通过JavaScript动态加载 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

@@ -9,7 +9,7 @@
 <li><a href="/student/cart">购物车</a></li>
 <li><a href="/student/orders" class="active">我的订单</a></li>
 <li><a href="/student/profile">个人信息</a></li>
-<li><a href="/student/complaints">我的投诉</a></li>
+<li><a href="/student/complaints">投诉评论</a></li>
 {% endblock %}
 
 {% block content %}
@@ -84,6 +84,107 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="cancelPasswordPayment()">取消支付</button>
                 <button type="button" class="btn btn-primary" onclick="verifyPaymentPassword()">确认支付</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 投诉模态框 -->
+<div class="modal fade" id="complaintModal" tabindex="-1" aria-labelledby="complaintModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="complaintModalLabel">提交投诉</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <form id="complaintForm">
+                    <div class="mb-3">
+                        <label for="orderSelect" class="form-label">选择订单</label>
+                        <select class="form-select" id="orderSelect" required>
+                            <!-- 订单选项将通过JavaScript动态填充 -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="complaintContent" class="form-label">投诉内容</label>
+                        <textarea class="form-control" id="complaintContent" rows="5" placeholder="请详细描述您的投诉内容..."
+                            required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitComplaint()">提交投诉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 评论模态框 -->
+<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="commentModalLabel">订单评价</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <form id="commentForm">
+                    <input type="hidden" id="commentOrderId">
+                    <div class="mb-3">
+                        <label for="dishScore" class="form-label">菜品评分</label>
+                        <div class="d-flex gap-1">
+                            <input type="radio" class="btn-check" name="dishScore" id="dish5" value="5"
+                                autocomplete="off" checked>
+                            <label class="btn btn-outline-warning" for="dish5">5星</label>
+                            <input type="radio" class="btn-check" name="dishScore" id="dish4" value="4"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="dish4">4星</label>
+                            <input type="radio" class="btn-check" name="dishScore" id="dish3" value="3"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="dish3">3星</label>
+                            <input type="radio" class="btn-check" name="dishScore" id="dish2" value="2"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="dish2">2星</label>
+                            <input type="radio" class="btn-check" name="dishScore" id="dish1" value="1"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="dish1">1星</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceScore" class="form-label">服务评分</label>
+                        <div class="d-flex gap-1">
+                            <input type="radio" class="btn-check" name="serviceScore" id="service5" value="5"
+                                autocomplete="off" checked>
+                            <label class="btn btn-outline-warning" for="service5">5星</label>
+                            <input type="radio" class="btn-check" name="serviceScore" id="service4" value="4"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="service4">4星</label>
+                            <input type="radio" class="btn-check" name="serviceScore" id="service3" value="3"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="service3">3星</label>
+                            <input type="radio" class="btn-check" name="serviceScore" id="service2" value="2"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="service2">2星</label>
+                            <input type="radio" class="btn-check" name="serviceScore" id="service1" value="1"
+                                autocomplete="off">
+                            <label class="btn btn-outline-warning" for="service1">1星</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commentContent" class="form-label">评价内容</label>
+                        <textarea class="form-control" id="commentContent" rows="5" placeholder="请分享您的用餐体验..."
+                            required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commentImages" class="form-label">上传图片</label>
+                        <input type="file" class="form-control" id="commentImages" multiple accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitComment()">提交评价</button>
             </div>
         </div>
     </div>
@@ -251,7 +352,7 @@
             html += `
                     \u003cdiv class="order-item"\u003e
                         \u003cdiv class="order-header d-flex justify-content-between align-items-center"\u003e
-                            \u003cspan\u003e订单号：${order.order_no}\u003c/span\u003e
+                            \u003cspan\u003e订单号：\u003ca href="javascript:void(0);" onclick="viewOrderDetail('${order.order_id}');" style="text-decoration: underline; cursor: pointer; color: #0d6efd;"\u003e${order.order_no}\u003c/a\u003e\u003c/span\u003e
                             \u003cspan class="status-badge ${statusInfo.class}"\u003e${statusInfo.text}\u003c/span\u003e
                         \u003c/div\u003e
                         \u003cdiv class="order-body"\u003e
@@ -277,9 +378,9 @@
                             \u003cspan\u003e下单时间：${formatDate(order.created_at)}\u003c/span\u003e
                             \u003cdiv class="d-flex gap-2"\u003e
                                 \u003cspan class="text-danger fw-bold"\u003e总计：¥${order.pay_amount.toFixed(2)}\u003c/span\u003e
-                                \u003cbutton class="btn btn-sm btn-outline-primary" onclick="viewOrderDetail('${order.order_id}')"\u003e查看详情\u003c/button\u003e
+                                <button class="btn btn-sm btn-outline-primary" onclick="viewOrderDetail('${order.order_id}')">查看详情</button>
                                 ${getStatusActions(order.status, order.order_id)}
-                                \u003cbutton class="btn btn-sm btn-outline-danger" onclick="deleteOrder('${order.order_id}')"\u003e删除\u003c/button\u003e
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteOrder('${order.order_id}')">删除</button>
                             \u003c/div\u003e
                         \u003c/div\u003e
                     \u003c/div\u003e
@@ -326,8 +427,14 @@
                 break;
             case '已完成':
             case 'delivered':
-                actions = `\u003cbutton class="btn btn-sm btn-primary" onclick="confirmReceipt('${orderId}')"\u003e确认收货\u003c/button\u003e`;
-                actions += `\u003cbutton class="btn btn-sm btn-outline-primary" onclick="addComment('${orderId}')"\u003e评价\u003c/button\u003e`;
+            case '已送达':
+                // actions = `<button class="btn btn-sm btn-primary" onclick="confirmReceipt('${orderId}')">确认收货</button>`;
+                actions += `<button class="btn btn-sm btn-outline-primary" onclick="addComment('${orderId}')">评价</button>`;
+                actions += `<button class="btn btn-sm btn-outline-warning" onclick="showComplaintForm('${orderId}')">投诉</button>`;
+                break;
+            case '已取消':
+            case 'cancelled':
+                actions += `<button class="btn btn-sm btn-outline-warning" onclick="showComplaintForm('${orderId}')">投诉</button>`;
                 break;
         }
         return actions;
@@ -466,16 +573,16 @@
         html += `
                     \u003c/tbody\u003e
                 \u003c/table\u003e
-                \u003cdl class="row justify-content-end"\u003e
-                    \u003cdt class="col-sm-3 text-right"\u003e商品总价：\u003c/dt\u003e
+                \u003cdl class="row"\u003e
+                    \u003cdt class="col-sm-3"\u003e商品总价：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e¥${subtotal.toFixed(2)}\u003c/dd\u003e
-                    \u003cdt class="col-sm-3 text-right"\u003e配送费：\u003c/dt\u003e
+                    \u003cdt class="col-sm-3"\u003e配送费：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e¥${order.delivery_fee.toFixed(2)}\u003c/dd\u003e
-                    \u003cdt class="col-sm-3 text-right"\u003e优惠金额：\u003c/dt\u003e
+                    \u003cdt class="col-sm-3"\u003e优惠金额：\u003c/dt\u003e
                     \u003cdd class="col-sm-9 text-success"\u003e-¥${order.discount_amount.toFixed(2)}\u003c/dd\u003e
-                    \u003cdt class="col-sm-3 text-right"\u003e应付金额：\u003c/dt\u003e
+                    \u003cdt class="col-sm-3"\u003e应付金额：\u003c/dt\u003e
                     \u003cdd class="col-sm-9"\u003e¥${order.total_amount.toFixed(2)}\u003c/dd\u003e
-                    \u003cdt class="col-sm-3 text-right fw-bold"\u003e实付金额：\u003c/dt\u003e
+                    \u003cdt class="col-sm-3 fw-bold"\u003e实付金额：\u003c/dt\u003e
                     \u003cdd class="col-sm-9 text-danger fw-bold"\u003e¥${order.pay_amount.toFixed(2)}\u003c/dd\u003e
                 \u003c/dl\u003e
             `;
@@ -630,9 +737,181 @@
         });
     }
 
+
+
+    // 格式化日期
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    // 显示投诉表单
+    function showComplaintForm(orderId = null) {
+        // 加载可投诉的订单
+        loadOrdersForComplaint(orderId);
+        // 清空投诉内容
+        $('#complaintContent').val('');
+        // 显示投诉模态框
+        $('#complaintModal').modal('show');
+    }
+
+    // 加载可投诉的订单
+    function loadOrdersForComplaint(selectedOrderId) {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: '/api/student/complaints/orders',
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    const orders = res.data;
+                    const select = $('#orderSelect');
+                    select.empty();
+
+                    orders.forEach(order => {
+                        const option = $('<option></option>');
+                        option.val(order.order_id);
+                        option.text(`${order.order_no} - ${order.merchant.name}`);
+                        select.append(option);
+                    });
+
+                    // 如果指定了订单ID，则选中该订单并自动填充订单号到投诉内容
+                    if (selectedOrderId) {
+                        // 将字符串类型的selectedOrderId转换为数字类型，以匹配后端返回的数据类型
+                        const selectedOrderIdNum = parseInt(selectedOrderId);
+                        select.val(selectedOrderIdNum);
+                        // 查找选中订单的订单号
+                        const selectedOrder = orders.find(order => order.order_id === selectedOrderIdNum);
+                        // if (selectedOrder) {
+                        //     // 自动在投诉内容中填写订单号和商家信息
+                        //     $('#complaintContent').val(`订单号：${selectedOrder.order_no} - ${selectedOrder.merchant.name} \n投诉内容：`);
+                        // }
+                    }
+                } else {
+                    alert('获取可投诉订单失败：' + res.msg);
+                }
+            }
+        });
+    }
+
+    // 提交投诉
+    function submitComplaint() {
+        const orderId = $('#orderSelect').val();
+        const content = $('#complaintContent').val();
+        const token = localStorage.getItem('student_token');
+
+        if (!orderId) {
+            alert('请选择订单');
+            return;
+        }
+        if (!content.trim()) {
+            alert('请填写投诉内容');
+            return;
+        }
+        if (content.trim().length < 10) {
+            alert('投诉内容至少需要10个字符');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/student/complaints',
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            contentType: 'application/json',
+            data: JSON.stringify({
+                order_id: orderId,
+                content: content.trim()
+            }),
+            success: function (res) {
+                if (res.code === 200) {
+                    alert('投诉提交成功！');
+                    // 隐藏投诉模态框
+                    $('#complaintModal').modal('hide');
+                } else {
+                    alert('投诉提交失败：' + res.msg);
+                }
+            },
+            error: function () {
+                alert('网络错误，请稍后重试');
+            }
+        });
+    }
+
     // 添加评价
     function addComment(orderId) {
-        alert('评价功能开发中...');
+        // 保存当前评价的订单ID
+        $('#commentOrderId').val(orderId);
+        // 清空评价内容和评分
+        $('#commentContent').val('');
+        $('input[name="dishScore"]').prop('checked', false);
+        $('#dish5').prop('checked', true);
+        $('input[name="serviceScore"]').prop('checked', false);
+        $('#service5').prop('checked', true);
+        // 清空图片选择
+        $('#commentImages').val('');
+        // 显示评论模态框
+        $('#commentModal').modal('show');
+    }
+
+    // 提交评论
+    function submitComment() {
+        const orderId = $('#commentOrderId').val();
+        const dishScore = $('input[name="dishScore"]:checked').val();
+        const serviceScore = $('input[name="serviceScore"]:checked').val();
+        const content = $('#commentContent').val();
+        const images = $('#commentImages')[0].files;
+        const token = localStorage.getItem('student_token');
+
+        if (!content.trim()) {
+            alert('请填写评价内容');
+            return;
+        }
+
+        // 创建FormData对象
+        const formData = new FormData();
+        formData.append('order_id', orderId);
+        formData.append('dish_score', dishScore);
+        formData.append('service_score', serviceScore);
+        formData.append('content', content.trim());
+
+        // 添加图片
+        for (let i = 0; i < images.length; i++) {
+            formData.append('images', images[i]);
+        }
+
+        $.ajax({
+            url: '/api/student/comments',
+            type: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.code === 200) {
+                    alert('评价提交成功！');
+                    // 隐藏评论模态框
+                    $('#commentModal').modal('hide');
+                    loadOrders(); // 重新加载订单列表
+                } else {
+                    alert('评价提交失败：' + res.msg);
+                }
+            },
+            error: function (xhr) {
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    alert('评价提交失败：' + res.msg);
+                } catch (e) {
+                    alert('网络错误，请稍后重试');
+                }
+            }
+        });
     }
 
     // 删除订单
@@ -652,19 +931,6 @@
                     alert('删除失败：' + res.msg);
                 }
             }
-        });
-    }
-
-    // 格式化日期
-    function formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
         });
     }
 </script>

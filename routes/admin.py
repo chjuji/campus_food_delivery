@@ -111,10 +111,17 @@ def get_coupons():
         # 转换为JSON可序列化的列表
         data = []
         for user_coupon in user_coupons:
+            # 构建student对象
+            student_obj = {
+                'id': user_coupon.student_id,
+                'name': user_coupon.student.name if hasattr(user_coupon, 'student') and user_coupon.student else ''
+            }
+            
             data.append({
                 'id': user_coupon.id,  # UserCoupon的ID
                 'student_id': user_coupon.student_id,
-                'student_name': user_coupon.student.name if hasattr(user_coupon, 'student') and user_coupon.student else '',
+                'student': student_obj,  # 完整的student对象
+                'student_name': user_coupon.student.name if hasattr(user_coupon, 'student') and user_coupon.student else '',  # 保持兼容性
                 'coupon_id': user_coupon.coupon_id,
                 'coupon_name': user_coupon.coupon.coupon_name if hasattr(user_coupon, 'coupon') else '',
                 'discount_amount': user_coupon.coupon.value if hasattr(user_coupon, 'coupon') else 0,
@@ -221,6 +228,15 @@ def update_platform_settings():
             # 查找配置
             config = PlatformConfig.get_by_key(config_key)
             if config:
+                # 对配送费收入进行特殊处理，限制为两位小数
+                if config_key == 'delivery_fee_earnings':
+                    try:
+                        # 转换为float后四舍五入到两位小数
+                        config_value = str(round(float(config_value), 2))
+                    except ValueError:
+                        # 如果转换失败，跳过更新
+                        continue
+                
                 # 更新配置值
                 config.config_value = config_value
                 updated_count += 1
@@ -739,9 +755,18 @@ def get_complaints():
         if user_type != 'admin':
             return jsonify({'code': 403, 'msg': '权限错误'}), 403
         
-        # 查询所有投诉
+        # 获取状态筛选参数
+        status = request.args.get('status', 'all')
+        
+        # 查询投诉
         from models.complaint import Complaint
-        complaints = Complaint.query.order_by(Complaint.create_time.desc()).all()
+        query = Complaint.query.order_by(Complaint.create_time.desc())
+        
+        # 根据状态筛选
+        if status != 'all':
+            query = query.filter_by(status=status)
+        
+        complaints = query.all()
         
         # 转换为JSON可序列化的列表
         data = []
@@ -754,11 +779,20 @@ def get_complaints():
                 if order:
                     order_no = order.order_no
             
+            # 获取商家ID
+            merchant_id = ''
+            if complaint.order_id:
+                # 从订单中获取商家ID
+                order = Order.query.get(complaint.order_id)
+                if order:
+                    merchant_id = order.merchant_id
+            
             data.append({
                 'id': complaint.id,
                 'order_id': complaint.order_id,
-                'order_no': order_no,  # 新增订单号字段
+                'order_no': order_no,
                 'student_id': complaint.student_id,
+                'merchant_id': merchant_id,
                 'content': complaint.content,
                 'status': complaint.status,
                 'create_time': complaint.create_time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -767,6 +801,125 @@ def get_complaints():
         return jsonify({'code': 200, 'data': data})
     except Exception as e:
         return jsonify({'code': 500, 'msg': f'查询失败：{str(e)}'})
+
+# 删除投诉
+@admin_bp.route('/complaints/<int:complaint_id>', methods=['DELETE'])
+@jwt_required()
+def delete_complaint(complaint_id):
+    try:
+        # 验证管理员权限
+        identity_str = get_jwt_identity()
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 查找投诉记录
+        from models.complaint import Complaint
+        complaint = Complaint.query.get(complaint_id)
+        
+        if not complaint:
+            return jsonify({'code': 404, 'msg': '投诉记录不存在'}), 404
+        
+        # 删除投诉记录
+        db.session.delete(complaint)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '投诉删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'code': 500, 'msg': f'删除投诉失败：{str(e)}'}), 500
+
+# 获取评论列表
+@admin_bp.get('/comments')
+@jwt_required()
+def get_comments():
+    try:
+        # 验证管理员权限
+        identity_str = get_jwt_identity()
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 获取分页参数
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('page_size', 10, type=int)
+        
+        # 查询评论
+        from models.comment import Comment
+        from models.order import Order
+        query = Comment.query.join(Order, Comment.order_id == Order.id).order_by(Comment.create_time.desc())
+        
+        # 分页查询
+        pagination = query.paginate(page=page, per_page=page_size, error_out=False)
+        comments = pagination.items
+        
+        # 转换为JSON可序列化的列表
+        comment_list = []
+        for comment in comments:
+            comment_list.append({
+                'id': comment.id,
+                'order_id': comment.order_id,
+                'order_no': comment.order.order_no,
+                'student_id': comment.student_id,
+                'merchant_id': comment.merchant_id,
+                'content': comment.content,
+                'dish_score': comment.dish_score,
+                'service_score': comment.service_score,
+                'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'merchant_reply': comment.merchant_reply,
+                'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
+            })
+        
+        return jsonify({
+            'code': 200,
+            'data': {
+                'total': pagination.total,
+                'page': page,
+                'page_size': page_size,
+                'items': comment_list
+            }
+        })
+    except Exception as e:
+        return jsonify({'code': 500, 'msg': f'查询失败：{str(e)}'})
+
+# 删除评论接口
+@admin_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
+@jwt_required()
+def delete_comment(comment_id):
+    try:
+        # 验证管理员权限
+        identity_str = get_jwt_identity()
+        if ':' not in identity_str:
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        user_type, user_id = identity_str.split(':', 1)
+        if user_type != 'admin':
+            return jsonify({'code': 403, 'msg': '权限错误'}), 403
+        
+        # 查询评论
+        from models.comment import Comment
+        comment = Comment.query.get(comment_id)
+        
+        if not comment:
+            return jsonify({'code': 404, 'msg': '评论不存在'}), 404
+        
+        # 删除评论
+        db.session.delete(comment)
+        db.session.commit()
+        
+        return jsonify({'code': 200, 'msg': '评论删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'code': 500, 'msg': f'删除评论失败：{str(e)}'})
 
 # 订单统计接口
 @admin_bp.route('/orders')

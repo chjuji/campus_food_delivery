@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}{% block page_title %}我的投诉 - 校园外卖平台{% endblock %}{% endblock %}
+{% block title %}{% block page_title %}投诉评论 - 校园外卖平台{% endblock %}{% endblock %}
 
 {% block sidebar_title %}学生中心{% endblock %}
 
@@ -9,54 +9,130 @@
 <li><a href="/student/cart">购物车</a></li>
 <li><a href="/student/orders">我的订单</a></li>
 <li><a href="/student/profile">个人信息</a></li>
-<li><a href="/student/complaints" class="active">我的投诉</a></li>
+<li><a href="/student/complaints" class="active">投诉评论</a></li>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">投诉管理</h5>
-            <button class="btn btn-primary" onclick="showComplaintForm()">
+            <h5 class="mb-0">投诉评论管理</h5>
+            <!-- <button class="btn btn-primary" onclick="showComplaintForm()">
                 <i class="fas fa-plus me-1"></i>提交投诉
-            </button>
+            </button> -->
         </div>
     </div>
     <div class="card-body">
+        <!-- 标签页切换 -->
         <div class="mb-4">
-            <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-sm btn-outline-primary active" onclick="filterComplaints('all')">全部</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('pending')">待处理</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('processing')">处理中</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="filterComplaints('resolved')">已解决</button>
+            <ul class="nav nav-tabs" id="contentTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="complaints-tab" data-bs-toggle="tab"
+                        data-bs-target="#complaints" type="button" role="tab" aria-controls="complaints"
+                        aria-selected="true" onclick="loadComplaints(1, 'all')">投诉列表</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="comments-tab" data-bs-toggle="tab" data-bs-target="#comments"
+                        type="button" role="tab" aria-controls="comments" aria-selected="false"
+                        onclick="loadComments(1)">评论列表</button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 标签页内容 -->
+        <div class="tab-content" id="contentTabsContent">
+            <!-- 投诉列表 -->
+            <div class="tab-pane fade show active" id="complaints" role="tabpanel" aria-labelledby="complaints-tab">
+                <div class="mb-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-primary active"
+                            onclick="filterComplaints('all')">全部</button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                            onclick="filterComplaints('pending')">待处理</button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                            onclick="filterComplaints('processing')">处理中</button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                            onclick="filterComplaints('resolved')">已解决</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>投诉内容</th>
+                                <th>涉及订单</th>
+                                <th>投诉时间</th>
+                                <th>状态</th>
+                                <th>处理结果</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="complaintsTable">
+                            <!-- 投诉列表将通过JavaScript动态加载 -->
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    加载中...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 d-flex justify-content-center" id="complaintsPagination">
+                    <!-- 投诉分页控件将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- 评论列表 -->
+            <div class="tab-pane fade" id="comments" role="tabpanel" aria-labelledby="comments-tab">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>评论内容</th>
+                                <th>涉及订单</th>
+                                <th>菜品评分</th>
+                                <th>服务评分</th>
+                                <th>评论时间</th>
+                                <th>商家回复</th>
+                                <th>回复时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commentsTable">
+                            <!-- 评论列表将通过JavaScript动态加载 -->
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">
+                                    加载中...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 d-flex justify-content-center" id="commentsPagination">
+                    <!-- 评论分页控件将通过JavaScript动态生成 -->
+                </div>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>投诉内容</th>
-                        <th>涉及订单</th>
-                        <th>投诉时间</th>
-                        <th>状态</th>
-                        <th>处理结果</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="complaintsTable">
-                    <!-- 投诉列表将通过JavaScript动态加载 -->
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">
-                            加载中...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4 d-flex justify-content-center" id="pagination">
-            <!-- 分页控件将通过JavaScript动态生成 -->
+<!-- 订单详情模态框 -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderDetailModalLabel">订单详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body" id="orderDetailContent">
+                <!-- 订单详情内容将通过JavaScript动态填充 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
         </div>
     </div>
 </div>
@@ -80,8 +156,16 @@
         $('.nav-link').removeClass('active');
         $('.nav-link[href="/student/complaints"]').addClass('active');
 
+        // 设置初始显示状态为投诉列表
+        $('#contentTabs .nav-link').removeClass('active');
+        $('#contentTabs .nav-link[aria-controls="complaints"]').addClass('active');
+        $('#contentTabsContent .tab-pane').removeClass('show active');
+        $('#contentTabsContent #complaints').addClass('show active');
+
         // 加载投诉列表
         loadComplaints(1, 'all');
+        // 预加载评论列表
+        loadComments(1);
     });
 
     // 加载投诉列表
@@ -140,14 +224,14 @@
                         <td>${complaint.content || '-'}</td>
                         <td>
                             ${complaint.order_no ?
-                    `<a href="/student/orders/detail/${complaint.order_id}" class="text-primary">${complaint.order_no}</a>` :
+                    `<a href="javascript:void(0);" onclick="viewOrderDetail('${complaint.order_id}');" class="text-primary">${complaint.order_no}</a>` :
                     '-'}
                         </td>
                         <td>${formatDate(complaint.created_at)}</td>
                         <td><span class="${statusClass}">${statusText}</span></td>
                         <td>${complaint.response || '-'}</td>
                         <td>
-                            ${complaint.status === 'pending' ?
+                            ${complaint.status === 'pending' || complaint.status === 'resolved' ?
                     `<button class="btn btn-sm btn-outline-danger" onclick="deleteComplaint(${complaint.id})">删除</button>` :
                     '<span class="text-muted">无操作</span>'}
                         </td>
@@ -158,11 +242,11 @@
         $('#complaintsTable').html(html);
     }
 
-    // 渲染分页
-    function renderPagination(total, currentPage, pageSize, status) {
+    // 渲染投诉分页
+    function renderComplaintsPagination(total, currentPage, pageSize, status) {
         const totalPages = Math.ceil(total / pageSize);
         if (totalPages <= 1) {
-            $('#pagination').html('');
+            $('#complaintsPagination').html('');
             return;
         }
 
@@ -201,7 +285,148 @@
             `;
 
         html += '</ul></nav>';
-        $('#pagination').html(html);
+        $('#complaintsPagination').html(html);
+    }
+
+    // 加载评论列表
+    function loadComments(page = 1, pageSize = 10) {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/comments?page=${page}&page_size=${pageSize}`,
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    renderCommentsList(res.data.items);
+                    renderCommentsPagination(res.data.total, res.data.page, res.data.page_size);
+                } else {
+                    console.error('加载评论失败:', res.msg);
+                    $('#commentsTable').html('<tr><td colspan="8" class="text-center text-danger">加载失败，请稍后重试</td></tr>');
+                }
+            },
+            error: function () {
+                $('#commentsTable').html('<tr><td colspan="8" class="text-center text-danger">网络错误，请稍后重试</td></tr>');
+            }
+        });
+    }
+
+    // 渲染评论列表
+    function renderCommentsList(comments) {
+        if (!comments || comments.length === 0) {
+            $('#commentsTable').html('<tr><td colspan="8" class="text-center text-muted">暂无评论记录</td></tr>');
+            return;
+        }
+
+        let html = '';
+        comments.forEach(comment => {
+            html += `
+                    <tr>
+                        <td>${comment.content || '-'}</td>
+                        <td>
+                            ${comment.order_no ?
+                    `<a href="javascript:void(0);" onclick="viewOrderDetail('${comment.order_id}');" class="text-primary">${comment.order_no}</a>` :
+                    '-'}
+                        </td>
+                        <td>${renderStars(comment.dish_score)}</td>
+                        <td>${renderStars(comment.service_score)}</td>
+                        <td>${comment.create_time}</td>
+                        <td>${comment.merchant_reply || '-'}</td>
+                        <td>${comment.reply_time || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteComment(${comment.id})">删除</button>
+                        </td>
+                    </tr>
+                `;
+        });
+
+        $('#commentsTable').html(html);
+    }
+
+    // 渲染星级评分
+    function renderStars(score) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= score) {
+                stars += '<i class="fa fa-star text-warning"></i>';
+            } else {
+                stars += '<i class="fa fa-star-o text-secondary"></i>';
+            }
+        }
+        return stars;
+    }
+
+    // 渲染评论分页
+    function renderCommentsPagination(total, currentPage, pageSize) {
+        const totalPages = Math.ceil(total / pageSize);
+        if (totalPages <= 1) {
+            $('#commentsPagination').html('');
+            return;
+        }
+
+        let html = '<nav aria-label="Comments pagination">';
+        html += '<ul class="pagination">';
+
+        // 上一页
+        html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadComments(${currentPage - 1})" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            `;
+
+        // 页码
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                html += `
+                        <li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="loadComments(${i})">${i}</a>
+                        </li>
+                    `;
+            } else if ((i === currentPage - 2 || i === currentPage + 2) && totalPages > 5) {
+                html += '<li class="page-item"><span class="page-link">...</span></li>';
+            }
+        }
+
+        // 下一页
+        html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadComments(${currentPage + 1})" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            `;
+
+        html += '</ul></nav>';
+        $('#commentsPagination').html(html);
+    }
+
+    // 删除评论
+    function deleteComment(commentId) {
+        if (!confirm('确定要删除这条评论吗？')) return;
+
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/comments/${commentId}`,
+            type: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    loadComments(1);
+                    alert('评论删除成功！');
+                } else {
+                    alert('评论删除失败：' + res.msg);
+                }
+            },
+            error: function (xhr) {
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    alert('评论删除失败：' + res.msg);
+                } catch (e) {
+                    alert('网络错误，请稍后重试');
+                }
+            }
+        });
     }
 
     // 显示投诉表单
@@ -228,6 +453,40 @@
                                 <option value="${order.id}">订单号：${order.order_no} - ${order.created_at}</option>
                             `);
                     });
+
+                    // 添加订单选择变化事件
+                    orderSelect.change(function () {
+                        const selectedOrder = $(this).val();
+                        if (selectedOrder === '') {
+                            // 显示商户选择部分并加载商户列表
+                            $('#merchantSection').show();
+                            loadMerchants();
+                        } else {
+                            // 隐藏商户选择部分
+                            $('#merchantSection').hide();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // 加载商户列表
+    function loadMerchants() {
+        $.ajax({
+            url: '/api/common/merchants',
+            type: 'GET',
+            success: function (res) {
+                if (res.code === 200) {
+                    const merchantSelect = $('#complaint-merchant');
+                    merchantSelect.empty();
+                    merchantSelect.append('<option value="">请选择商户</option>');
+
+                    res.data.forEach(merchant => {
+                        merchantSelect.append(`
+                                <option value="${merchant.id}">${merchant.name}</option>
+                            `);
+                    });
                 }
             }
         });
@@ -237,14 +496,20 @@
     function submitComplaint() {
         const content = $('#complaint-content').val().trim();
         const orderId = $('#complaint-order').val();
+        const merchantId = $('#complaint-merchant').val();
 
         if (!content) {
             alert('请输入投诉内容');
             return;
         }
 
-        if (content.length < 10) {
+        if (content.trim().length < 10) {
             alert('投诉内容至少需要10个字符');
+            return;
+        }
+
+        if (!orderId && !merchantId) {
+            alert('请选择关联订单或商户');
             return;
         }
 
@@ -256,7 +521,8 @@
             contentType: 'application/json',
             data: JSON.stringify({
                 content: content,
-                order_id: orderId || null
+                order_id: orderId || null,
+                merchant_id: merchantId || null
             }),
             success: function (res) {
                 if (res.code === 200) {
@@ -320,6 +586,144 @@
         });
     }
 
+    // 查看订单详情
+    function viewOrderDetail(orderId) {
+        const token = localStorage.getItem('student_token');
+        $.ajax({
+            url: `/api/student/orders/${orderId}`,
+            type: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function (res) {
+                if (res.code === 200) {
+                    showOrderDetail(res.data);
+                } else {
+                    alert('获取订单详情失败：' + res.msg);
+                }
+            }
+        });
+    }
+
+    // 显示订单详情
+    function showOrderDetail(order) {
+        const statusMap = {
+            // 中文状态值映射
+            '待支付': { text: '待支付', class: 'bg-warning text-white' },
+            '已支付': { text: '已支付', class: 'bg-info text-white' },
+            '待接单': { text: '待接单', class: 'bg-info text-white' },
+            '待配送': { text: '配送中', class: 'bg-primary text-white' },
+            '已完成': { text: '已送达', class: 'bg-success text-white' },
+            '已送达': { text: '已送达', class: 'bg-success text-white' },
+            '已取消': { text: '已取消', class: 'bg-secondary text-white' },
+            // 兼容英文状态值
+            'pending': { text: '待支付', class: 'bg-warning text-white' },
+            'preparing': { text: '待接单', class: 'bg-info text-white' },
+            'delivering': { text: '配送中', class: 'bg-primary text-white' },
+            'delivered': { text: '已送达', class: 'bg-success text-white' },
+            'cancelled': { text: '已取消', class: 'bg-secondary text-white' }
+        };
+        const statusInfo = statusMap[order.status] || { text: '未知状态', class: 'bg-gray text-white' };
+
+        let html = `
+                <dl class="row mb-3">
+                    <dt class="col-sm-3">订单编号：</dt>
+                    <dd class="col-sm-9">${order.order_no}</dd>
+                    <dt class="col-sm-3">订单ID：</dt>
+                    <dd class="col-sm-9">${order.order_id}</dd>
+                    <dt class="col-sm-3">订单状态：</dt>
+                    <dd class="col-sm-9"><span class="status-badge ${statusInfo.class}">${statusInfo.text}</span></dd>
+                    <dt class="col-sm-3">商户名称：</dt>
+                    <dd class="col-sm-9">${order.merchant.name}</dd>
+                    <dt class="col-sm-3">下单时间：</dt>
+                    <dd class="col-sm-9">${formatDate(order.created_at)}</dd>
+            `;
+
+        // 显示支付时间（如果有）
+        if (order.pay_time) {
+            html += `
+                    <dt class="col-sm-3">支付时间：</dt>
+                    <dd class="col-sm-9">${formatDate(order.pay_time)}</dd>
+            `;
+        }
+
+        // 显示完成时间（如果有）
+        if (order.finish_time) {
+            html += `
+                    <dt class="col-sm-3">完成时间：</dt>
+                    <dd class="col-sm-9">${formatDate(order.finish_time)}</dd>
+            `;
+        }
+
+        html += `
+                    <dt class="col-sm-3">收货地址：</dt>
+                    <dd class="col-sm-9">${order.address}</dd>
+            `;
+
+        // 显示备注（如果有）
+        if (order.remark) {
+            html += `
+                    <dt class="col-sm-3">备注：</dt>
+                    <dd class="col-sm-9">${order.remark}</dd>
+            `;
+        }
+
+        html += `
+                </dl>
+                <h6 class="mb-2">商品清单</h6>
+                <table class="table table-sm mb-3">
+                    <thead>
+                        <tr>
+                            <th>商品名称</th>
+                            <th>单价</th>
+                            <th>数量</th>
+                            <th>小计</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+        let subtotal = 0;
+        order.items.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+            html += `
+                    <tr>
+                        <td>${item.dish_name}</td>
+                        <td>¥${item.price}</td>
+                        <td>${item.quantity}</td>
+                        <td>¥${itemTotal.toFixed(2)}</td>
+                    </tr>
+                `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+                <div class="text-start">
+                    <div class="d-flex mb-2">
+                        <span style="width: 80px;">商品总价：</span>
+                        <span>¥${subtotal.toFixed(2)}</span>
+                    </div>
+                    ${order.discount_amount > 0 ? `
+                    <div class="d-flex mb-2">
+                        <span style="width: 80px;">优惠金额：</span>
+                        <span class="text-success">-¥${order.discount_amount.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="d-flex mb-2">
+                        <span style="width: 80px;">配送费：</span>
+                        <span>¥${order.delivery_fee.toFixed(2)}</span>
+                    </div>
+                    <div class="d-flex font-bold">
+                        <span style="width: 80px;">实付金额：</span>
+                        <span class="text-danger">¥${order.pay_amount.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+
+        $('#orderDetailContent').html(html);
+        $('#orderDetailModal').modal('show');
+    }
+
     // 退出登录
     function logout() {
         localStorage.removeItem('student_token');
@@ -345,6 +749,14 @@
                             <!-- 订单选项将通过JavaScript动态加载 -->
                         </select>
                     </div>
+                    <div class="mb-3" id="merchantSection" style="display: none;">
+                        <label for="complaint-merchant" class="form-label">选择商户 <span
+                                class="text-danger">*</span></label>
+                        <select class="form-select" id="complaint-merchant">
+                            <option value="">请选择商户</option>
+                            <!-- 商户选项将通过JavaScript动态加载 -->
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label for="complaint-content" class="form-label">投诉内容 <span
                                 class="text-danger">*</span></label>
@@ -356,7 +768,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" onclick="submitComplaint()">提交投诉</button>
+                <!-- <button type="button" class="btn btn-primary" onclick="submitComplaint()">提交投诉</button> -->
             </div>
         </div>
     </div>

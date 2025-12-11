@@ -7,6 +7,7 @@ from models.coupon import Coupon, UserCoupon
 from models.merchant import Merchant
 from models.order import Order, OrderItem
 from models.complaint import Complaint
+from models.comment import Comment
 from models.address import Address
 from models.platform_config import PlatformConfig
 import re
@@ -17,6 +18,7 @@ from utils.validator import validate_student_register
 from utils.file_utils import save_file, allowed_file
 from extensions import db
 import bcrypt
+import uuid
 import os
 
 # 检查学生是否已登录的装饰器（API路由用）
@@ -54,6 +56,12 @@ def validate_pay_password(pay_password):
 # 注册
 @student_bp.post('/register')  # 对应前端请求的/api/student/register
 def register():
+    # 检查系统是否处于维护中
+    from models.platform_config import PlatformConfig
+    maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+    if maintenance_config and maintenance_config.config_value.lower() == 'true':
+        return jsonify({'code': 403, 'msg': '系统正在维护中'}), 200
+    
     data = request.get_json()
     student_id = data.get('student_id')
     phone = data.get('phone')
@@ -91,6 +99,12 @@ def register():
 # 登录
 @student_bp.post('/login')
 def login():
+    # 检查系统是否处于维护中
+    from models.platform_config import PlatformConfig
+    maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+    if maintenance_config and maintenance_config.config_value.lower() == 'true':
+        return jsonify({'code': 403, 'msg': '系统正在维护中'}), 200
+    
     data = request.get_json()
     login_id = data.get('student_id') or data.get('phone')
     password = data.get('password')
@@ -1376,6 +1390,47 @@ def cancel_order(order_id):
         print(f'取消订单错误：{str(e)}')
         return jsonify({'code': 500, 'msg': '取消订单失败：服务器内部错误'}), 500
 
+# 确认收货
+# @student_bp.route('/orders/<int:order_id>/confirm', methods=['POST'])
+# @api_login_required
+# def confirm_order(order_id):
+#     try:
+#         # 获取用户ID
+#         if 'student_id' in session:
+#             user_id = session['student_id']
+#         else:
+#             # 尝试从JWT中获取
+#             current_user = get_jwt_identity()
+#             if isinstance(current_user, str) and ':' in current_user:
+#                 user_type, user_id = current_user.split(':')
+#                 if user_type != 'student':
+#                     return jsonify({'code': 403, 'msg': '权限错误'}), 403
+#                 user_id = int(user_id)
+#             else:
+#                 return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+#         # 查找订单
+#         order = Order.query.filter_by(id=order_id, student_id=user_id).first()
+#         if not order:
+#             return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        
+#         # 检查订单状态是否可以确认收货
+#         if order.status not in ['待配送']:
+#             return jsonify({'code': 400, 'msg': '只有待配送状态的订单才能确认收货'}), 400
+        
+#         # 更新订单状态和完成时间
+#         order.status = '已完成'
+#         order.finish_time = datetime.now()
+        
+#         # 提交数据库事务
+#         db.session.commit()
+        
+#         return jsonify({'code': 200, 'msg': '确认收货成功！'})
+#     except Exception as e:
+#         db.session.rollback()
+#         print(f'确认收货错误：{str(e)}')
+#         return jsonify({'code': 500, 'msg': '确认收货失败：服务器内部错误'}), 500
+
 # 删除订单
 @student_bp.route('/orders/<int:order_id>/delete', methods=['DELETE'])
 @api_login_required
@@ -1504,6 +1559,55 @@ def get_complaints():
         print(f'获取投诉列表错误：{str(e)}')
         return jsonify({'code': 500, 'msg': f'获取投诉列表失败：服务器内部错误'}), 500
 
+# 获取可投诉的订单列表
+@student_bp.route('/complaints/orders', methods=['GET'])
+@api_login_required
+def get_complaint_orders():
+    try:
+        # 获取用户ID
+        if 'student_id' in session:
+            user_id = session['student_id']
+        else:
+            # 尝试从JWT中获取
+            current_user = get_jwt_identity()
+            if isinstance(current_user, str) and ':' in current_user:
+                user_type, user_id = current_user.split(':')
+                if user_type != 'student':
+                    return jsonify({'code': 403, 'msg': '权限错误'}), 403
+                user_id = int(user_id)
+            else:
+                return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+        # 获取学生的所有订单
+        orders = Order.query.filter_by(student_id=user_id).options(
+            db.joinedload(Order.merchant)
+        ).all()
+        
+        # 构建返回数据
+        order_list = []
+        for order in orders:
+            # 只返回已完成或已取消的订单（根据业务需求调整）
+            if order.status in ['已送达', '已取消']:
+                # 获取商户信息
+                merchant_info = {'name': '未知商户'}
+                if order.merchant:
+                    merchant_info = {'name': order.merchant.merchant_name}
+                
+                order_list.append({
+                    'order_id': order.id,
+                    'order_no': order.order_no,
+                    'merchant': merchant_info
+                })
+        
+        return jsonify({
+            'code': 200,
+            'msg': '获取可投诉订单成功',
+            'data': order_list
+        })
+    except Exception as e:
+        print(f'获取可投诉订单错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '获取可投诉订单失败：服务器内部错误'}), 500
+
 # 提交投诉
 @student_bp.route('/complaints', methods=['POST'])
 @api_login_required
@@ -1546,10 +1650,41 @@ def submit_complaint():
             except ValueError:
                 return jsonify({'code': 400, 'msg': '无效的订单ID'}), 400
         
+        # 获取商户ID
+        merchant_id = None
+        if order_id:
+            # 从订单中获取商户ID
+            from models.order import Order
+            order = Order.query.get(order_id)
+            if order:
+                merchant_id = order.merchant_id
+            else:
+                return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        else:
+            # 如果没有订单ID，直接从请求中获取商户ID
+            merchant_id = data.get('merchant_id')
+            
+            # 验证merchant_id
+            if merchant_id:
+                if not isinstance(merchant_id, int):
+                    try:
+                        merchant_id = int(merchant_id)
+                    except ValueError:
+                        return jsonify({'code': 400, 'msg': '无效的商户ID'}), 400
+                
+                # 验证商户是否存在
+                from models.merchant import Merchant
+                merchant = Merchant.query.get(merchant_id)
+                if not merchant:
+                    return jsonify({'code': 404, 'msg': '商户不存在'}), 404
+            else:
+                return jsonify({'code': 400, 'msg': '请选择关联订单或商户'}), 400
+        
         # 创建投诉记录
         complaint = Complaint(
             student_id=user_id,
             order_id=order_id,
+            merchant_id=merchant_id,
             content=content,
             status='待处理'
         )
@@ -1597,9 +1732,9 @@ def delete_complaint(complaint_id):
         if not complaint:
             return jsonify({'code': 404, 'msg': '投诉记录不存在'}), 404
         
-        # 只有待处理状态的投诉才能删除
-        if complaint.status != '待处理':
-            return jsonify({'code': 400, 'msg': '只有待处理的投诉才能删除'}), 400
+        # 待处理和已解决的投诉都可以删除
+        if complaint.status not in ['待处理', '已解决']:
+            return jsonify({'code': 400, 'msg': '只有待处理或已解决的投诉才能删除'}), 400
         
         # 删除投诉记录
         db.session.delete(complaint)
@@ -1623,4 +1758,205 @@ def logout():
     session.pop('student_id', None)
     return jsonify({'code': 200, 'msg': '登出成功'})
 
+# 获取评论列表
+@student_bp.route('/comments', methods=['GET'])
+@api_login_required
+def get_comments():
+    try:
+        # 获取用户ID
+        if 'student_id' in session:
+            user_id = session['student_id']
+        else:
+            # 尝试从JWT中获取
+            current_user = get_jwt_identity()
+            if isinstance(current_user, str) and ':' in current_user:
+                user_type, user_id = current_user.split(':')
+                if user_type != 'student':
+                    return jsonify({'code': 403, 'msg': '权限错误'}), 403
+                user_id = int(user_id)
+            else:
+                return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+        # 获取查询参数
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('page_size', 10))
+        
+        # 构建查询 - 关联Order表获取订单号
+        query = Comment.query.join(Order, Comment.order_id == Order.id).filter_by(student_id=user_id)
+        
+        # 按创建时间倒序排序
+        query = query.order_by(Comment.create_time.desc())
+        
+        # 分页查询
+        total = query.count()
+        pagination = query.paginate(page=page, per_page=page_size)
+        comments = pagination.items
+        
+        # 转换为JSON可序列化的数据
+        comment_list = []
+        for comment in comments:
+            comment_list.append({
+                'id': comment.id,
+                'order_id': comment.order_id,
+                'order_no': comment.order.order_no,  # 添加订单号
+                'dish_score': comment.dish_score,
+                'service_score': comment.service_score,
+                'content': comment.content,
+                'img_urls': comment.img_urls.split(',') if comment.img_urls else [],
+                'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'merchant_reply': comment.merchant_reply,
+                'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
+            })
+        
+        return jsonify({
+            'code': 200,
+            'data': {
+                'items': comment_list,
+                'total': total,
+                'page': page,
+                'page_size': page_size
+            }
+        })
+    except Exception as e:
+        print(f'获取评论列表错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '获取评论列表失败：服务器内部错误'}), 500
+
+# 提交评论
+@student_bp.route('/comments', methods=['POST'])
+@api_login_required
+def submit_comment():
+    try:
+        # 获取用户ID
+        if 'student_id' in session:
+            user_id = session['student_id']
+        else:
+            # 尝试从JWT中获取
+            current_user = get_jwt_identity()
+            if isinstance(current_user, str) and ':' in current_user:
+                user_type, user_id = current_user.split(':')
+                if user_type != 'student':
+                    return jsonify({'code': 403, 'msg': '权限错误'}), 403
+                user_id = int(user_id)
+            else:
+                return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+        # 获取请求数据（FormData格式）
+        order_id = request.form.get('order_id')
+        dish_score = request.form.get('dish_score')
+        service_score = request.form.get('service_score')
+        content = request.form.get('content', '').strip()
+        
+        # 处理图片上传
+        img_urls = []
+        images = request.files.getlist('images')
+        for image in images:
+            if image and image.filename:
+                try:
+                    # 使用项目中的save_file函数保存图片
+                    img_path = save_file(image, 'comment')
+                    img_urls.append(f"/static/{img_path}")
+                except ValueError as ve:
+                    return jsonify({'code': 400, 'msg': f'图片上传失败：{str(ve)}'}), 400
+        
+        # 验证数据
+        if not order_id:
+            return jsonify({'code': 400, 'msg': '订单ID不能为空'}), 400
+        order_id = int(order_id)
+        
+        if not dish_score or not service_score:
+            return jsonify({'code': 400, 'msg': '评分不能为空'}), 400
+        dish_score = int(dish_score)
+        service_score = int(service_score)
+        
+        if dish_score < 1 or dish_score > 5 or service_score < 1 or service_score > 5:
+            return jsonify({'code': 400, 'msg': '评分必须在1-5之间'}), 400
+        
+        if not content:
+            return jsonify({'code': 400, 'msg': '评论内容不能为空'}), 400
+        
+        if len(content) < 5:
+            return jsonify({'code': 400, 'msg': '评论内容至少需要5个字符'}), 400
+        
+        # 检查订单是否存在且属于该学生
+        order = Order.query.filter_by(id=order_id, student_id=user_id).first()
+        if not order:
+            return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+        
+        # 检查是否已经评论过
+        existing_comment = Comment.query.filter_by(order_id=order_id).first()
+        if existing_comment:
+            return jsonify({'code': 400, 'msg': '该订单已经评论过'}), 400
+        
+        # 获取商户ID
+        merchant_id = order.merchant_id
+        
+        # 处理图片URLs
+        img_urls_str = ','.join(img_urls) if img_urls else None
+        
+        # 创建评论
+        comment = Comment(
+            order_id=order_id,
+            student_id=user_id,
+            merchant_id=merchant_id,
+            dish_score=dish_score,
+            service_score=service_score,
+            content=content,
+            img_urls=img_urls_str  # 将列表转换为逗号分隔的字符串，空列表则存储为None
+        )
+        
+        db.session.add(comment)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '评论提交成功'
+        })
+    except ValueError as ve:
+        db.session.rollback()
+        return jsonify({'code': 400, 'msg': f'参数错误：{str(ve)}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        print(f'提交评论错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '提交评论失败：服务器内部错误'}), 500
+
+# 删除评论
+@student_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
+@api_login_required
+def delete_comment(comment_id):
+    try:
+        # 获取用户ID
+        if 'student_id' in session:
+            user_id = session['student_id']
+        else:
+            # 尝试从JWT中获取
+            current_user = get_jwt_identity()
+            if isinstance(current_user, str) and ':' in current_user:
+                user_type, user_id = current_user.split(':')
+                if user_type != 'student':
+                    return jsonify({'code': 403, 'msg': '权限错误'}), 403
+                user_id = int(user_id)
+            else:
+                return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
+        
+        # 查找评论记录
+        comment = Comment.query.filter_by(
+            id=comment_id,
+            student_id=user_id
+        ).first()
+        
+        if not comment:
+            return jsonify({'code': 404, 'msg': '评论记录不存在'}), 404
+        
+        # 删除评论记录
+        db.session.delete(comment)
+        db.session.commit()
+        
+        return jsonify({
+            'code': 200,
+            'msg': '评论删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'删除评论错误：{str(e)}')
+        return jsonify({'code': 500, 'msg': '删除评论失败：服务器内部错误'}), 500
 

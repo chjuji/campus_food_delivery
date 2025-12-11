@@ -45,6 +45,54 @@ def get_dishes(merchant_id):
     } for d in dishes]
     return jsonify({'code': 200, 'data': data})
 
+# 获取菜品评论
+@common_bp.get('/dish_comments/<int:dish_id>')
+def get_dish_comments(dish_id):
+    try:
+        from models.order import OrderItem, Order
+        from models.comment import Comment
+        
+        # 1. 通过dish_id查找所有相关的订单项
+        order_items = OrderItem.query.filter_by(dish_id=dish_id).all()
+        
+        # 2. 提取这些订单项对应的order_ids
+        order_ids = [item.order_id for item in order_items]
+        if not order_ids:
+            return jsonify({'code': 200, 'data': []})
+        
+        # 3. 查询这些订单的评论
+        comments = Comment.query.filter(Comment.order_id.in_(order_ids)).order_by(Comment.create_time.desc()).all()
+        
+        # 4. 构建返回数据
+        comment_list = []
+        for comment in comments:
+            order_no = '-'  # 默认显示'-'
+            if comment.order_id:
+                # 查询订单信息获取订单号
+                order = Order.query.get(comment.order_id)
+                if order:
+                    order_no = order.order_no
+            
+            comment_list.append({
+                'id': comment.id,
+                'order_id': comment.order_id,
+                'order_no': order_no,
+                'content': comment.content,
+                'dish_score': comment.dish_score,
+                'service_score': comment.service_score,
+                'img_urls': comment.img_urls.split(',') if comment.img_urls else [],
+                'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'merchant_reply': comment.merchant_reply,
+                'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
+            })
+        
+        return jsonify({'code': 200, 'data': comment_list})
+    except Exception as e:
+        print(f"获取菜品评论失败: {str(e)}")
+        return jsonify({'code': 500, 'msg': f'获取评论失败: {str(e)}'}), 500
+
+
+
 # 根据菜品类别获取菜品列表
 @common_bp.get('/dishes_by_category')
 def get_dishes_by_category():

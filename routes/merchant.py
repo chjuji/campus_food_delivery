@@ -199,6 +199,11 @@ def merchant_profile():
 # 商户注册
 @merchant_bp.post('/register')
 def register():
+    # 检查系统是否处于维护中
+    from models.platform_config import PlatformConfig
+    maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+    if maintenance_config and maintenance_config.config_value.lower() == 'true':
+        return jsonify({'code': 403, 'msg': '系统正在维护中'}), 200
     # 从表单中获取字段（支持 multipart/form-data 上传）
     form = request.form
     files = request.files
@@ -247,6 +252,12 @@ def register():
 # 商户登录 - 同时支持两种登录方式
 @merchant_bp.post('/login-alt')
 def api_login():
+    # 检查系统是否处于维护中
+    from models.platform_config import PlatformConfig
+    maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+    if maintenance_config and maintenance_config.config_value.lower() == 'true':
+        return jsonify({'code': 403, 'msg': '系统正在维护中'}), 200
+    
     data = request.get_json()
     phone = data.get('contact_phone') or data.get('phone')
     password = data.get('password')
@@ -296,6 +307,12 @@ def api_login():
 # 网页版登录API
 @merchant_bp.route('/login', methods=['POST'])
 def merchant_web_login():
+    # 检查系统是否处于维护中
+    from models.platform_config import PlatformConfig
+    maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+    if maintenance_config and maintenance_config.config_value.lower() == 'true':
+        return jsonify({'code': 403, 'msg': '系统正在维护中'}), 200
+    
     data = request.get_json()
     contact_phone = data.get('contact_phone')  # 使用contact_phone作为登录凭证
     password = data.get('password')
@@ -358,6 +375,11 @@ def merchant_web_login():
 # 网页版注册API
 @merchant_bp.route('/register', methods=['POST'])
 def merchant_web_register():
+    # 检查系统是否处于维护中
+    from models.platform_config import PlatformConfig
+    maintenance_config = PlatformConfig.get_by_key('system_maintenance')
+    if maintenance_config and maintenance_config.config_value.lower() == 'true':
+        return jsonify({'success': False, 'message': '系统正在维护中'}), 200
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -1513,3 +1535,217 @@ def update_coupon_status(coupon_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'更新优惠券状态失败：{str(e)}'}), 500
+
+
+@merchant_bp.route('/complaints', methods=['GET'])
+@api_login_required
+def get_merchant_complaints():
+    """获取商户的投诉列表"""
+    try:
+        # 获取当前登录商户
+        merchant = Merchant.query.get(session['merchant_id'])
+        if not merchant:
+            return jsonify({'success': False, 'message': '商户不存在'}), 404
+
+        # 获取状态筛选参数
+        status = request.args.get('status', 'all')
+
+        # 查询该商户的投诉
+        from models.complaint import Complaint
+        query = Complaint.query.filter_by(merchant_id=merchant.id)
+        
+        # 状态筛选
+        if status != 'all':
+            query = query.filter_by(status=status)
+            
+        complaints = query.order_by(Complaint.create_time.desc()).all()
+
+        # 构建返回数据
+        complaint_list = []
+        for complaint in complaints:
+            order_no = '-'  # 默认显示'-'
+            if complaint.order_id:
+                # 查询订单信息获取订单号
+                from models.order import Order
+                order = Order.query.get(complaint.order_id)
+                if order:
+                    order_no = order.order_no
+            
+            complaint_list.append({
+                'id': complaint.id,
+                'order_id': complaint.order_id,
+                'order_no': order_no,
+                'content': complaint.content,
+                'img_urls': complaint.img_urls.split(',') if complaint.img_urls else [],
+                'status': complaint.status,
+                'create_time': complaint.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'handle_time': complaint.handle_time.strftime('%Y-%m-%d %H:%M:%S') if complaint.handle_time else None,
+                'handle_result': complaint.handle_result
+            })
+
+        return jsonify({'success': True, 'data': complaint_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'获取投诉列表失败：{str(e)}'}), 500
+
+@merchant_bp.route('/comments', methods=['GET'])
+@api_login_required
+def get_merchant_comments():
+    """获取商户的评论列表"""
+    try:
+        # 获取当前登录商户
+        merchant = Merchant.query.get(session['merchant_id'])
+        if not merchant:
+            return jsonify({'success': False, 'message': '商户不存在'}), 404
+
+        # 查询该商户的评论
+        from models.comment import Comment
+        comments = Comment.query.filter_by(merchant_id=merchant.id)
+        comments = comments.order_by(Comment.create_time.desc()).all()
+
+        # 构建返回数据
+        comment_list = []
+        for comment in comments:
+            order_no = '-'  # 默认显示'-'
+            if comment.order_id:
+                # 查询订单信息获取订单号
+                from models.order import Order
+                order = Order.query.get(comment.order_id)
+                if order:
+                    order_no = order.order_no
+            
+            comment_list.append({
+                'id': comment.id,
+                'order_id': comment.order_id,
+                'order_no': order_no,
+                'content': comment.content,
+                'dish_score': comment.dish_score,
+                'service_score': comment.service_score,
+                'img_urls': comment.img_urls.split(',') if comment.img_urls else [],
+                'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'merchant_reply': comment.merchant_reply,
+                'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
+            })
+
+        return jsonify({'success': True, 'data': comment_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'获取评论列表失败：{str(e)}'}), 500
+
+
+@merchant_bp.route('/comments/<int:comment_id>/reply', methods=['POST'])
+@api_login_required
+def reply_comment(comment_id):
+    """
+    回复评论
+    """
+    try:
+        # 获取当前登录商户
+        merchant = Merchant.query.get(session['merchant_id'])
+        if not merchant:
+            return jsonify({'success': False, 'message': '商户不存在'}), 404
+
+        # 获取回复内容
+        reply_content = request.form.get('reply_content')
+        if not reply_content:
+            return jsonify({'success': False, 'message': '回复内容不能为空'}), 400
+        
+        if len(reply_content.strip()) < 5:
+            return jsonify({'success': False, 'message': '回复内容不能少于5个字符'}), 400
+        
+        if len(reply_content) > 200:
+            return jsonify({'success': False, 'message': '回复内容不能超过200个字符'}), 400
+        
+        # 检查是否包含敏感词或不当内容
+        sensitive_words = ['垃圾', '差评', '恶心', '投诉']
+        for word in sensitive_words:
+            if word in reply_content:
+                return jsonify({'success': False, 'message': '回复内容包含不当词汇，请修改后再提交'}), 400
+
+        # 查询评论
+        from models.comment import Comment
+        comment = Comment.query.filter_by(id=comment_id, merchant_id=merchant.id).first()
+        if not comment:
+            return jsonify({'success': False, 'message': '评论不存在'}), 404
+
+        # 更新评论回复
+        comment.merchant_reply = reply_content
+        comment.reply_time = datetime.now()
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': '回复成功'})
+    except Exception as e:
+        # 添加详细的错误日志，方便调试
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[ERROR] 回复评论时出错: {str(e)}")
+        print(f"[ERROR] 详细堆栈信息: {error_trace}")
+        return jsonify({'success': False, 'message': f'回复失败：{str(e)}', 'trace': error_trace}), 500
+
+
+@merchant_bp.route('/complaints/<int:complaint_id>/accept', methods=['POST'])
+@api_login_required
+def accept_complaint(complaint_id):
+    """
+    接受投诉，将状态从待处理改为处理中
+    """
+    try:
+        # 获取当前登录商户
+        merchant = Merchant.query.get(session['merchant_id'])
+        if not merchant:
+            return jsonify({'success': False, 'message': '商户不存在'}), 404
+
+        # 查询投诉记录
+        from models.complaint import Complaint
+        complaint = Complaint.query.filter_by(id=complaint_id, merchant_id=merchant.id).first()
+        if not complaint:
+            return jsonify({'success': False, 'message': '投诉记录不存在'}), 404
+
+        # 检查当前状态是否为待处理
+        if complaint.status != '待处理':
+            return jsonify({'success': False, 'message': '只有待处理的投诉才能接受'}), 400
+
+        # 更新状态为处理中
+        complaint.status = '处理中'
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': '投诉已接受，状态已更新为处理中'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'接受投诉失败：{str(e)}'}), 500
+
+
+@merchant_bp.route('/complaints/<int:complaint_id>/resolve', methods=['POST'])
+@api_login_required
+def resolve_complaint(complaint_id):
+    """
+    解决投诉，将状态从处理中改为已解决
+    """
+    try:
+        # 获取当前登录商户
+        merchant = Merchant.query.get(session['merchant_id'])
+        if not merchant:
+            return jsonify({'success': False, 'message': '商户不存在'}), 404
+
+        # 查询投诉记录
+        from models.complaint import Complaint
+        complaint = Complaint.query.filter_by(id=complaint_id, merchant_id=merchant.id).first()
+        if not complaint:
+            return jsonify({'success': False, 'message': '投诉记录不存在'}), 404
+
+        # 检查当前状态是否为处理中
+        if complaint.status != '处理中':
+            return jsonify({'success': False, 'message': '只有处理中的投诉才能解决'}), 400
+
+        # 获取处理结果
+        from flask import request
+        data = request.get_json()
+        handle_result = data.get('handle_result', '')
+
+        # 更新状态为已解决，并记录处理结果和处理时间
+        from datetime import datetime
+        complaint.status = '已解决'
+        complaint.handle_result = handle_result
+        complaint.handle_time = datetime.now()
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': '投诉已解决，状态已更新为已解决'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'解决投诉失败：{str(e)}'}), 500

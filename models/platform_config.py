@@ -51,6 +51,9 @@ class PlatformConfig(db.Model):
     @classmethod
     def update_delivery_fee_earnings(cls, amount):
         """更新平台配送费收入配置"""
+        # 限制为两位小数
+        amount = round(float(amount), 2)
+        
         config = cls.get_by_key('delivery_fee_earnings')
         if config:
             config.config_value = str(amount)

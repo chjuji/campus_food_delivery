@@ -11,6 +11,9 @@
             margin: 0;
             background: #f5f7fa;
             color: #333;
+            position: relative;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .container {
@@ -92,32 +95,57 @@
             {% if platform_info.platform_logo %}
             <div style="text-align: center; margin-bottom: 16px;">
                 <img src="{{ url_for('static', filename=platform_info.platform_logo[7:]) }}"
-                    alt="{{ platform_info.platform_name }}" style="max-height: 80px; max-width: 200px;">
+                    alt="{{ platform_info.platform_name }}"
+                    style="max-height: 120px; max-width: 300px; border-radius: 50%; object-fit: cover;">
             </div>
             {% endif %}
             <h1>{{ platform_info.platform_name }}</h1>
             <p class="lead">{{ platform_info.platform_desc }} —— 请选择您的入口</p>
+
+            <!-- 系统维护提示 -->
+            {% if is_maintenance %}
+            <div
+                style="background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-top: 16px; text-align: center; font-weight: bold;">
+                ⚠️ 系统正在维护中，请稍后登录 ⚠️
+            </div>
+            {% endif %}
         </header>
 
         <div class="grid">
             <div class="card">
                 <h3>学生端</h3>
                 <p class="muted">浏览商家，提交订单，查看订单状态</p>
+                {% if is_maintenance %}
+                <a class="btn" href="#" onclick="alert('系统正在维护中'); return false;">进入学生首页</a>
+                <div style="margin-top:8px;">
+                    <a href="#" onclick="alert('系统正在维护中'); return false;">登录</a> |
+                    <a href="#" onclick="alert('系统正在维护中'); return false;">注册</a>
+                </div>
+                {% else %}
                 <a class="btn" href="{{ url_for('student_login_page') }}">进入学生首页</a>
                 <div style="margin-top:8px;">
                     <a href="{{ url_for('student_login_page') }}">登录</a> |
                     <a href="{{ url_for('student_register_page') }}">注册</a>
                 </div>
+                {% endif %}
             </div>
 
             <div class="card">
                 <h3>商户端</h3>
                 <p class="muted">管理菜品，处理订单</p>
+                {% if is_maintenance %}
+                <a class="btn" href="#" onclick="alert('系统正在维护中'); return false;">进入商户首页</a>
+                <div style="margin-top:8px;">
+                    <a href="#" onclick="alert('系统正在维护中'); return false;">登录</a> |
+                    <a href="#" onclick="alert('系统正在维护中'); return false;">注册</a>
+                </div>
+                {% else %}
                 <a class="btn" href="{{ url_for('merchant_login_page') }}">进入商户首页</a>
                 <div style="margin-top:8px;">
                     <a href="{{ url_for('merchant_login_page') }}">登录</a> |
                     <a href="{{ url_for('merchant_register_page') }}">注册</a>
                 </div>
+                {% endif %}
             </div>
 
             <div class="card">
@@ -138,6 +166,8 @@
             &copy; {{ current_year if current_year is defined else "" }} {{ platform_info.platform_name }}
         </footer>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='js/bubble_background.js') }}"></script>
 </body>
 
 </html>

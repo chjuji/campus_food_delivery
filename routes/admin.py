@@ -84,7 +84,7 @@ def get_merchants():
                 'address': merchant.address,
                 'create_time': merchant.create_time.strftime('%Y-%m-%d %H:%M'),  # 格式化时间
                 'license_img': merchant.license_img,  # 营业执照图片路径
-                'logo': merchant.logo  # 商铺Logo路径
+                'logo': merchant.logo if merchant.logo else 'uploads/merchant/default.svg'  # 商铺Logo路径
             })
         return jsonify({'code': 200, 'data': data})
     except Exception as e:
@@ -363,7 +363,7 @@ def get_pending_merchants():
                 'address': merchant.address,
                 'create_time': merchant.create_time.strftime('%Y-%m-%d %H:%M'),  # 格式化时间
                 'license_img': merchant.license_img,  # 营业执照图片路径
-                'logo': merchant.logo  # 商铺Logo路径
+                'logo': merchant.logo if merchant.logo else 'uploads/merchant/default.svg'  # 商铺Logo路径
             })
         return jsonify({'code': 200, 'data': data})
     except Exception as e:
@@ -794,6 +794,7 @@ def get_complaints():
                 'student_id': complaint.student_id,
                 'merchant_id': merchant_id,
                 'content': complaint.content,
+                'img_urls': complaint.formatted_img_urls,
                 'status': complaint.status,
                 'create_time': complaint.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'handle_time': complaint.handle_time.strftime('%Y-%m-%d %H:%M:%S') if complaint.handle_time else None
@@ -876,7 +877,8 @@ def get_comments():
                 'service_score': comment.service_score,
                 'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'merchant_reply': comment.merchant_reply,
-                'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
+                'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None,
+                'img_urls': comment.formatted_img_urls
             })
         
         return jsonify({
@@ -977,7 +979,7 @@ def get_order_statistics():
         # 按商户统计销售
         merchant_sales = {}
         for order in orders:
-            if order.status == '已完成':
+            if order.status == '已送达':
                 merchant_sales[order.merchant_id] = merchant_sales.get(order.merchant_id, 0) + order.pay_amount
         
         # 获取订单列表（用于表格展示）

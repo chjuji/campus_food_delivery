@@ -3,21 +3,21 @@
 {% block title %}菜品管理 - 商户后台{% endblock %}
 
 {% block sidebar %}
-    <a class="nav-link" href="/merchant/index">
-        <i class="fas fa-tachometer-alt"></i> 控制台
-    </a>
-    <a class="nav-link" href="/merchant/orders">
-        <i class="fas fa-shopping-bag"></i> 订单管理
-    </a>
-    <a class="nav-link active" href="/merchant/dishes">
-        <i class="fas fa-utensils"></i> 菜品管理
-    </a>
-    <a class="nav-link" href="/merchant/statistics">
-        <i class="fas fa-chart-bar"></i> 经营统计
-    </a>
-    <a class="nav-link" href="/merchant/settings">
-        <i class="fas fa-cog"></i> 商铺设置
-    </a>
+<a class="nav-link" href="/merchant/index">
+    <i class="fas fa-tachometer-alt"></i> 控制台
+</a>
+<a class="nav-link" href="/merchant/orders">
+    <i class="fas fa-shopping-bag"></i> 订单管理
+</a>
+<a class="nav-link active" href="/merchant/dishes">
+    <i class="fas fa-utensils"></i> 菜品管理
+</a>
+<a class="nav-link" href="/merchant/statistics">
+    <i class="fas fa-chart-bar"></i> 经营统计
+</a>
+<a class="nav-link" href="/merchant/settings">
+    <i class="fas fa-cog"></i> 商铺设置
+</a>
 {% endblock %}
 
 {% block header %}菜品管理{% endblock %}
@@ -42,6 +42,7 @@
                         <th>菜品图片</th>
                         <th>菜品名称</th>
                         <th>价格</th>
+                        <th>库存</th>
                         <th>销量</th>
                         <th>状态</th>
                         <th>操作</th>
@@ -49,7 +50,7 @@
                 </thead>
                 <tbody id="dishesTable">
                     <tr>
-                        <td colspan="6" class="text-center text-muted">暂无菜品数据</td>
+                        <td colspan="7" class="text-center text-muted">暂无菜品数据</td>
                     </tr>
                 </tbody>
             </table>
@@ -67,232 +68,233 @@
 </div>
 
 <script>
-// 页面加载完成后，获取并显示菜品数据
-window.onload = function() {
-    loadDishes();
-};
+    // 页面加载完成后，获取并显示菜品数据
+    window.onload = function () {
+        loadDishes();
+    };
 
-// 加载菜品数据
-function loadDishes(page = 1, pageSize = 10) {
-    fetch(`/api/merchant/dishes?page=${page}&page_size=${pageSize}`)
-        .then(response => response.json())
-        .then(data => {
-            const dishesTable = document.getElementById('dishesTable');
-            
-            if (data.code === 200 && data.data && data.data.dishes) {
-                const dishes = data.data.dishes;
-                
-                if (dishes.length === 0) {
-                    dishesTable.innerHTML = '<tr><td colspan="6" class="text-center text-muted">暂无菜品数据</td></tr>';
-                    return;
-                }
-                
-                // 填充菜品数据到表格
-                let html = '';
-                dishes.forEach(dish => {
-                    const statusClass = dish.is_shelf ? 'badge-success' : 'badge-secondary';
-                    const statusText = dish.is_shelf ? '已上架' : '已下架';
-                    const statusAction = dish.is_shelf ? '下架' : '上架';
-                    
-                    html += `
+    // 加载菜品数据
+    function loadDishes(page = 1, pageSize = 10) {
+        fetch(`/api/merchant/dishes?page=${page}&page_size=${pageSize}`)
+            .then(response => response.json())
+            .then(data => {
+                const dishesTable = document.getElementById('dishesTable');
+
+                if (data.code === 200 && data.data && data.data.dishes) {
+                    const dishes = data.data.dishes;
+
+                    if (dishes.length === 0) {
+                        dishesTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted">暂无菜品数据</td></tr>';
+                        return;
+                    }
+
+                    // 填充菜品数据到表格
+                    let html = '';
+                    dishes.forEach(dish => {
+                        const statusClass = dish.is_shelf ? 'badge-success' : 'badge-secondary';
+                        const statusText = dish.is_shelf ? '已上架' : '已下架';
+                        const statusAction = dish.is_shelf ? '下架' : '上架';
+
+                        html += `
                     <tr>
                         <td><img src="${'/static/' + dish.img_url || '/static/uploads/dish/default_dish.jpg'}" width="60" height="60" class="rounded"></td>
                         <td>${dish.dish_name}</td>
                         <td>¥${dish.price.toFixed(2)}</td>
-                        <td>${dish.sales || 0}</td>
+                        <td>${dish.stock || 0}</td>
+                        <td>售出${dish.sales || 0}</td>
                         <td><span class="badge ${statusClass}" style="color: black;">${statusText}</span></td>
                         <td>
-                            <a href="#" class="btn btn-sm btn-info mr-1" onclick="editDish(${dish.id})")>编辑</a>
-                            <a href="#" class="btn btn-sm ${dish.is_shelf ? 'btn-warning' : 'btn-secondary'} mr-1" onclick="toggleShelf(${dish.id}, ${!dish.is_shelf})")>${statusAction}</a>
-                            <a href="#" class="btn btn-sm btn-danger" onclick="deleteDish(${dish.id})")>删除</a>
+                            <a href="#" class="btn btn-sm btn-info mr-1" onclick="editDish(${dish.id})">编辑</a>
+                            <a href="#" class="btn btn-sm ${dish.is_shelf ? 'btn-warning' : 'btn-secondary'} mr-1" onclick="toggleShelf(${dish.id}, ${!dish.is_shelf})">${statusAction}</a>
+                            <a href="#" class="btn btn-sm btn-danger" onclick="deleteDish(${dish.id})">删除</a>
                         </td>
                     </tr>
                     `;
-                });
-                
-                dishesTable.innerHTML = html;
-                
-                // 更新分页
-                updatePagination(data.data.total, page, pageSize);
-            } else {
-                dishesTable.innerHTML = '<tr><td colspan="6" class="text-center text-muted">获取菜品数据失败</td></tr>';
-            }
-        })
-        .catch(error => {
-            console.error('加载菜品失败:', error);
-            document.getElementById('dishesTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>';
-        });
-}
+                    });
 
-// 更新分页控件
-function updatePagination(total, currentPage, pageSize) {
-    const totalPages = Math.ceil(total / pageSize);
-    const pagination = document.querySelector('.pagination');
-    
-    let html = '';
-    
-    // 上一页
-    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadDishes(${currentPage - 1}, ${pageSize})">上一页</a></li>`;
-    
-    // 页码
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="loadDishes(${i}, ${pageSize})")">${i}</a></li>`;
-    }
-    
-    // 下一页
-    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadDishes(${currentPage + 1}, ${pageSize})">下一页</a></li>`;
-    
-    pagination.innerHTML = html;
-}
+                    dishesTable.innerHTML = html;
 
-// 编辑菜品
-function editDish(dishId) {
-    // 获取菜品详情
-    fetch(`/api/merchant/dishes/${dishId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.code === 200 && data.data) {
-                const dish = data.data;
-                // 填充表单数据
-                document.getElementById('editDishId').value = dish.id;
-                document.getElementById('editDishName').value = dish.dish_name;
-                document.getElementById('editPrice').value = dish.price;
-                document.getElementById('editStock').value = dish.stock;
-                document.getElementById('editCategory').value = dish.category;
-                document.getElementById('editDescription').value = dish.description || '';
-                document.getElementById('editIsShelf').checked = dish.is_shelf;
-                
-                // 显示模态框
-                const editModal = new bootstrap.Modal(document.getElementById('editDishModal'));
-                editModal.show();
-            } else {
-                alert('获取菜品详情失败：' + (data.msg || '未知错误'));
-            }
-        })
-        .catch(error => {
-            console.error('获取菜品详情失败:', error);
-            alert('网络错误，请稍后重试');
-        });
-}
+                    // 更新分页
+                    updatePagination(data.data.total, page, pageSize);
+                } else {
+                    dishesTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted">获取菜品数据失败</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('加载菜品失败:', error);
+                document.getElementById('dishesTable').innerHTML = '<tr><td colspan="7" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>';
+            });
+    }
 
-// 保存菜品编辑
-function saveDishEdit() {
-    const dishId = document.getElementById('editDishId').value;
-    const dishName = document.getElementById('editDishName').value.trim();
-    const price = document.getElementById('editPrice').value;
-    const stock = document.getElementById('editStock').value;
-    const category = document.getElementById('editCategory').value.trim();
-    const description = document.getElementById('editDescription').value.trim();
-    const isShelf = document.getElementById('editIsShelf').checked;
-    
-    // 验证必要字段
-    if (!dishName) {
-        alert('请输入菜品名称');
-        document.getElementById('editDishName').focus();
-        return;
-    }
-    
-    if (!price) {
-        alert('请输入价格');
-        document.getElementById('editPrice').focus();
-        return;
-    }
-    
-    if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
-        alert('请输入有效的价格');
-        document.getElementById('editPrice').focus();
-        return;
-    }
-    
-    if (!category) {
-        alert('请选择分类');
-        document.getElementById('editCategory').focus();
-        return;
-    }
-    
-    // 准备更新数据
-    const updateData = {
-        dish_name: dishName,
-        price: parseFloat(price),
-        stock: parseInt(stock) || 0,
-        category: category,
-        description: description,
-        is_shelf: isShelf
-    };
-    
-    // 发送更新请求
-    fetch(`/api/merchant/dishes/${dishId}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.code === 200) {
-            alert('菜品更新成功');
-            // 关闭模态框
-            bootstrap.Modal.getInstance(document.getElementById('editDishModal')).hide();
-            // 重新加载菜品列表
-            loadDishes();
-        } else {
-            alert('更新失败：' + (data.msg || '未知错误'));
+    // 更新分页控件
+    function updatePagination(total, currentPage, pageSize) {
+        const totalPages = Math.ceil(total / pageSize);
+        const pagination = document.querySelector('.pagination');
+
+        let html = '';
+
+        // 上一页
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadDishes(${currentPage - 1}, ${pageSize})">上一页</a></li>`;
+
+        // 页码
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="loadDishes(${i}, ${pageSize})")">${i}</a></li>`;
         }
-    })
-    .catch(error => {
-        console.error('更新菜品失败:', error);
-        alert('网络错误，请稍后重试');
-    });
-}
 
-// 上下架菜品
-function toggleShelf(dishId, isShelf) {
-    if (confirm(`确定要${isShelf ? '上架' : '下架'}该菜品吗？`)) {
-        fetch(`/api/merchant/dish/${dishId}/shelf`, {
-            method: 'POST',
+        // 下一页
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadDishes(${currentPage + 1}, ${pageSize})">下一页</a></li>`;
+
+        pagination.innerHTML = html;
+    }
+
+    // 编辑菜品
+    function editDish(dishId) {
+        // 获取菜品详情
+        fetch(`/api/merchant/dishes/${dishId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200 && data.data) {
+                    const dish = data.data;
+                    // 填充表单数据
+                    document.getElementById('editDishId').value = dish.id;
+                    document.getElementById('editDishName').value = dish.dish_name;
+                    document.getElementById('editPrice').value = dish.price;
+                    document.getElementById('editStock').value = dish.stock;
+                    document.getElementById('editCategory').value = dish.category;
+                    document.getElementById('editDescription').value = dish.description || '';
+                    document.getElementById('editIsShelf').checked = dish.is_shelf;
+
+                    // 显示模态框
+                    const editModal = new bootstrap.Modal(document.getElementById('editDishModal'));
+                    editModal.show();
+                } else {
+                    alert('获取菜品详情失败：' + (data.msg || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('获取菜品详情失败:', error);
+                alert('网络错误，请稍后重试');
+            });
+    }
+
+    // 保存菜品编辑
+    function saveDishEdit() {
+        const dishId = document.getElementById('editDishId').value;
+        const dishName = document.getElementById('editDishName').value.trim();
+        const price = document.getElementById('editPrice').value;
+        const stock = document.getElementById('editStock').value;
+        const category = document.getElementById('editCategory').value.trim();
+        const description = document.getElementById('editDescription').value.trim();
+        const isShelf = document.getElementById('editIsShelf').checked;
+
+        // 验证必要字段
+        if (!dishName) {
+            alert('请输入菜品名称');
+            document.getElementById('editDishName').focus();
+            return;
+        }
+
+        if (!price) {
+            alert('请输入价格');
+            document.getElementById('editPrice').focus();
+            return;
+        }
+
+        if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+            alert('请输入有效的价格');
+            document.getElementById('editPrice').focus();
+            return;
+        }
+
+        if (!category) {
+            alert('请选择分类');
+            document.getElementById('editCategory').focus();
+            return;
+        }
+
+        // 准备更新数据
+        const updateData = {
+            dish_name: dishName,
+            price: parseFloat(price),
+            stock: parseInt(stock) || 0,
+            category: category,
+            description: description,
+            is_shelf: isShelf
+        };
+
+        // 发送更新请求
+        fetch(`/api/merchant/dishes/${dishId}`, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ shelf: isShelf })
+            body: JSON.stringify(updateData)
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.code === 200) {
-                alert('操作成功');
-                loadDishes(); // 重新加载菜品列表
-            } else {
-                alert('操作失败：' + (data.msg || '未知错误'));
-            }
-        })
-        .catch(error => {
-            console.error('操作失败:', error);
-            alert('操作失败，请稍后重试');
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    alert('菜品更新成功');
+                    // 关闭模态框
+                    bootstrap.Modal.getInstance(document.getElementById('editDishModal')).hide();
+                    // 重新加载菜品列表
+                    loadDishes();
+                } else {
+                    alert('更新失败：' + (data.msg || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('更新菜品失败:', error);
+                alert('网络错误，请稍后重试');
+            });
     }
-}
 
-// 删除菜品
-function deleteDish(dishId) {
-    if (confirm('确定要删除该菜品吗？此操作不可撤销！')) {
-        fetch(`/api/merchant/dish/${dishId}`, {
-            method: 'DELETE'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.code === 200) {
-                alert('删除成功');
-                loadDishes(); // 重新加载菜品列表
-            } else {
-                alert('删除失败：' + (data.msg || '未知错误'));
-            }
-        })
-        .catch(error => {
-            console.error('删除失败:', error);
-            alert('删除失败，请稍后重试');
-        });
+    // 上下架菜品
+    function toggleShelf(dishId, isShelf) {
+        if (confirm(`确定要${isShelf ? '上架' : '下架'}该菜品吗？`)) {
+            fetch(`/api/merchant/dish/${dishId}/shelf`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ shelf: isShelf })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        alert('操作成功');
+                        loadDishes(); // 重新加载菜品列表
+                    } else {
+                        alert('操作失败：' + (data.msg || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('操作失败:', error);
+                    alert('操作失败，请稍后重试');
+                });
+        }
     }
-}
+
+    // 删除菜品
+    function deleteDish(dishId) {
+        if (confirm('确定要删除该菜品吗？此操作不可撤销！')) {
+            fetch(`/api/merchant/dish/${dishId}`, {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        alert('删除成功');
+                        loadDishes(); // 重新加载菜品列表
+                    } else {
+                        alert('删除失败：' + (data.msg || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('删除失败:', error);
+                    alert('删除失败，请稍后重试');
+                });
+        }
+    }
 </script>
 
 <!-- 编辑菜品模态框 -->
@@ -312,7 +314,8 @@ function deleteDish(dishId) {
                     </div>
                     <div class="mb-3">
                         <label for="editPrice" class="form-label">价格</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="editPrice" placeholder="请输入价格" required>
+                        <input type="number" step="0.01" min="0" class="form-control" id="editPrice" placeholder="请输入价格"
+                            required>
                     </div>
                     <div class="mb-3">
                         <label for="editStock" class="form-label">库存</label>

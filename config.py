@@ -27,7 +27,8 @@ class Config:
         'merchant': os.path.join(STATIC_FOLDER, 'uploads/merchant'),
         'avatar': os.path.join(STATIC_FOLDER, 'uploads/avatar'),
         'system': os.path.join(STATIC_FOLDER, 'uploads/system'),
-        'comment': os.path.join(STATIC_FOLDER, 'uploads/comments')
+        'comment': os.path.join(STATIC_FOLDER, 'uploads/comments'),
+        'complaint': os.path.join(STATIC_FOLDER, 'uploads/complaints')
     }
 
     # 允许的文件格式

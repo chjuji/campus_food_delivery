@@ -1,8 +1,9 @@
 from datetime import datetime
-from models.order import Order
+from models.order import Order, OrderItem
 from models.student import Student
 from models.merchant import Merchant
 from models.platform_config import PlatformConfig
+from models.dish import Dish
 from app import db
 
 def simulate_payment(order_id: int) -> tuple[bool, int]:
@@ -92,7 +93,28 @@ def simulate_payment(order_id: int) -> tuple[bool, int]:
     print(f"  - 新增配送费：¥{delivery_fee:.2f}")
     print(f"  - 新收入：¥{new_earnings:.2f}")
     
-    # 先提交订单状态和钱包更新的事务
+    # 处理支付成功后的库存逻辑
+    # 获取订单中的所有菜品
+    order_items = OrderItem.query.filter_by(order_id=order_id).all()
+    for item in order_items:
+        dish = Dish.query.get(item.dish_id)
+        if dish:
+            # 如果库存为0，表示无限库存，不需要更新
+            if dish.stock != 0:
+                # 原库存
+                old_stock = dish.stock
+                # 订单中该菜品的数量
+                order_quantity = item.quantity
+                
+                # 如果当前库存等于订单数量，支付成功后直接变成-1
+                if old_stock == order_quantity:
+                    dish.stock = -1
+                else:
+                    # 否则库存减去订单数量
+                    dish.stock -= order_quantity
+                print(f"菜品 {dish.dish_name} 库存更新：原库存 {old_stock} -> 新库存 {dish.stock} (订单数量: {order_quantity})")
+
+    # 提交所有更新的事务
     db.session.commit()
     
     # 支付成功后，为用户发放商户的已激活优惠券

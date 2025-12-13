@@ -107,7 +107,7 @@
                             <button class="btn btn-outline-primary me-2"
                                 onclick="switchSettingsTab('order')">订单设置</button>
                             <button class="btn btn-outline-primary me-2"
-                                onclick="switchSettingsTab('complaint')">投诉管理</button>
+                                onclick="switchSettingsTab('complaint')">投诉评论</button>
                             <button class="btn btn-outline-primary me-2"
                                 onclick="switchSettingsTab('system')">系统设置</button>
                             <button class="btn btn-outline-primary me-2"
@@ -233,12 +233,13 @@
                                     <thead>
                                         <tr id="merchantTableHeader">
                                             <th>序号</th>
-                                            <th>店铺名称</th>
+                                            <th>商户名称</th>
                                             <th>联系人</th>
                                             <th>联系电话</th>
                                             <th>地址</th>
                                             <th>申请时间</th>
                                             <th>资质证明</th>
+                                            <th>Logo</th>
                                             <th>状态</th>
                                             <th>操作</th>
                                         </tr>
@@ -525,10 +526,12 @@
                             <img src="/static/${merchant.license_img}" class="license-img rounded" 
                                  onclick="showLicense('/static/${merchant.license_img}')" 
                                  alt="营业执照">
-                            ${merchant.logo ?
-                        `<br><img src="/static/${merchant.logo}" class="license-img rounded mt-2"
-                    onclick="showLicense('/static/${merchant.logo}')" 
-                                    alt="商铺Logo">` : ''}
+                        </td>
+                        <td>
+                            <!-- Logo图片 -->
+                            <img src="/static/${merchant.logo || 'uploads/merchant/default.svg'}" class="license-img rounded"
+                                 onclick="showLicense('/static/${merchant.logo || 'uploads/merchant/default.svg'}')" 
+                                 alt="商铺Logo">
                         </td>
                         <td>${statusBadge}</td>
                         <td>${actionButtons}</td>
@@ -1070,7 +1073,16 @@
                         <td>${complaint.student_id}</td>
                         <td>${complaint.merchant_id}</td>
                         <td>${complaint.order_id || '-'}</td>
-                        <td class="text-truncate" style="max-width: 200px;" title="${complaint.content}">${complaint.content}</td>
+                        <td title="${complaint.content}">
+                            ${complaint.content}
+                            ${complaint.img_urls && complaint.img_urls.length > 0 ? `
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    ${complaint.img_urls.map(img => `
+                                        <img src="${img}" alt="投诉图片" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" onclick="openImagePreview('${img}');">
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </td>
                         <td>${statusBadge}</td>
                         <td>${complaint.create_time}</td>
                         <td>${complaint.handle_time || '-'}</td>
@@ -1302,6 +1314,7 @@
                                             <thead>
                                                 <tr>
                                                     <th>评论内容</th>
+                                                    <th>评论图片</th>
                                                     <th>涉及订单</th>
                                                     <th>菜品评分</th>
                                                     <th>服务评分</th>
@@ -1652,6 +1665,15 @@
                     html += `
                         <tr>
                             <td>${comment.content}</td>
+                            <td>
+                                ${comment.img_urls && comment.img_urls.length > 0 ? `
+                                    <div class="d-flex flex-wrap gap-2">
+                                        ${comment.img_urls.map(img => `
+                                            <img src="${img}" alt="评论图片" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" onclick="openImagePreview('${img}');">
+                                        `).join('')}
+                                    </div>
+                                ` : '<span class="text-muted">无图片</span>'}
+                            </td>
                             <td>${comment.order_no}</td>
                             <td>${foodStars}</td>
                             <td>${serviceStars}</td>
@@ -1753,7 +1775,30 @@
 
             $('#commentsPagination').html(html);
         }
+
+        // 打开图片预览模态框
+        function openImagePreview(imgUrl) {
+            $('#imagePreviewSrc').attr('src', imgUrl);
+            $('#imagePreviewModal').modal('show');
+        }
     </script>
+
+    <!-- 图片预览模态框 -->
+    <div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header p-1 border-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body p-1 d-flex justify-content-center align-items-center">
+                    <img id="imagePreviewSrc" src="" alt="预览图片" class="img-fluid"
+                        style="max-height: 80vh; max-width: 100%;">
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

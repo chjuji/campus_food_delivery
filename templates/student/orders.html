@@ -110,6 +110,11 @@
                         <textarea class="form-control" id="complaintContent" rows="5" placeholder="请详细描述您的投诉内容..."
                             required></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="complaintImages" class="form-label">上传图片（可选）</label>
+                        <input type="file" class="form-control" id="complaintImages" multiple accept="image/*">
+                        <div class="form-text text-muted">最多上传9张图片，每张图片不超过5MB</div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -805,6 +810,7 @@
     function submitComplaint() {
         const orderId = $('#orderSelect').val();
         const content = $('#complaintContent').val();
+        const images = $('#complaintImages')[0].files;
         const token = localStorage.getItem('student_token');
 
         if (!orderId) {
@@ -820,15 +826,23 @@
             return;
         }
 
+        // 创建FormData对象
+        const formData = new FormData();
+        formData.append('order_id', orderId);
+        formData.append('content', content.trim());
+
+        // 添加图片
+        for (let i = 0; i < images.length; i++) {
+            formData.append('images', images[i]);
+        }
+
         $.ajax({
             url: '/api/student/complaints',
             type: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
-            contentType: 'application/json',
-            data: JSON.stringify({
-                order_id: orderId,
-                content: content.trim()
-            }),
+            contentType: false, // 不设置contentType，由浏览器自动设置
+            processData: false, // 不处理数据，保持FormData格式
+            data: formData,
             success: function (res) {
                 if (res.code === 200) {
                     alert('投诉提交成功！');
@@ -838,8 +852,13 @@
                     alert('投诉提交失败：' + res.msg);
                 }
             },
-            error: function () {
-                alert('网络错误，请稍后重试');
+            error: function (xhr) {
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    alert('投诉提交失败：' + res.msg);
+                } catch (e) {
+                    alert('网络错误，请稍后重试');
+                }
             }
         });
     }

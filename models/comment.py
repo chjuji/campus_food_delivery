@@ -16,5 +16,16 @@ class Comment(db.Model):
     merchant_reply = db.Column(db.Text, comment='商家回复')
     reply_time = db.Column(db.DateTime, comment='回复时间')
 
+    @property
+    def formatted_img_urls(self):
+        """将图片URL中的单数形式路径转换为复数形式"""
+        if not self.img_urls:
+            return []
+        # 分割URL列表
+        urls = self.img_urls.split(',')
+        # 将单数形式的'comment'替换为复数形式的'comments'
+        formatted_urls = [url.replace('/comment/', '/comments/') for url in urls]
+        return formatted_urls
+
     def __repr__(self):
         return f'<Comment {self.id}>'

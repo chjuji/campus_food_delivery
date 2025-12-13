@@ -767,8 +767,11 @@ def get_dishes():
     # 构建菜品列表
     dish_list = []
     for dish in paginated.items:
-        # 计算销量（简化版，实际应该从订单项目中统计）
-        sales = db.session.query(func.count(OrderItem.id)).filter_by(dish_id=dish.id).scalar() or 0
+        # 计算销量：只统计状态为"已送达"的订单
+        sales = db.session.query(func.count(OrderItem.id))\
+            .join(Order, Order.id == OrderItem.order_id)\
+            .filter(OrderItem.dish_id == dish.id, Order.status == '已送达')\
+            .scalar() or 0
         
         dish_list.append({
             'id': dish.id,
@@ -920,7 +923,7 @@ def get_merchant_profile():
             'contact_name': merchant.contact_name,
             'contact_phone': merchant.contact_phone,
             'license_img': merchant.license_img,
-            'logo': merchant.logo,
+            'logo': merchant.logo if merchant.logo else 'uploads/merchant/default.svg',
             'address': merchant.address,
             'status': merchant.status,
             'service_fee': merchant.service_fee,
@@ -996,7 +999,7 @@ def get_merchant_settings():
         'business_hours': getattr(merchant, 'business_hours', ''),
         'is_open': is_open_bool,  # 确保返回布尔类型
         'status': merchant.status,
-        'logo': getattr(merchant, 'logo', '')  # 添加logo字段
+        'logo': getattr(merchant, 'logo', '') if getattr(merchant, 'logo', '') else 'uploads/merchant/default.svg'  # 添加默认logo
     }
     
     print(f"获取商户设置 - ID: {merchant.id}, 名称: {merchant.merchant_name}, is_open: {is_open_bool}, 营业时间: {settings_data['business_hours']}")
@@ -1031,8 +1034,9 @@ def update_merchant_settings():
                 from utils.file_utils import save_file
                 logo_file = request.files['logo']
                 
-                # 删除旧Logo文件（如果存在）
+                # 删除旧Logo文件（如果存在且不是默认Logo）
                 if merchant.logo:
+                    # 商户Logo没有默认值，所以只要存在就删除
                     old_logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', merchant.logo)
                     if os.path.exists(old_logo_path):
                         os.remove(old_logo_path)
@@ -1250,6 +1254,9 @@ def toggle_dish_shelf(dish_id):
             }), 404
         
         shelf = request.json.get('shelf', True)
+        # 确保shelf是布尔值
+        if isinstance(shelf, str):
+            shelf = shelf.lower() == 'true'
         dish.is_shelf = shelf
         db.session.commit()
         
@@ -1576,7 +1583,7 @@ def get_merchant_complaints():
                 'order_id': complaint.order_id,
                 'order_no': order_no,
                 'content': complaint.content,
-                'img_urls': complaint.img_urls.split(',') if complaint.img_urls else [],
+                'img_urls': complaint.formatted_img_urls,
                 'status': complaint.status,
                 'create_time': complaint.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'handle_time': complaint.handle_time.strftime('%Y-%m-%d %H:%M:%S') if complaint.handle_time else None,
@@ -1620,7 +1627,7 @@ def get_merchant_comments():
                 'content': comment.content,
                 'dish_score': comment.dish_score,
                 'service_score': comment.service_score,
-                'img_urls': comment.img_urls.split(',') if comment.img_urls else [],
+                'img_urls': comment.formatted_img_urls,
                 'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'merchant_reply': comment.merchant_reply,
                 'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None

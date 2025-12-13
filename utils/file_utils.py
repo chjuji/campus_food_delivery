@@ -19,4 +19,7 @@ def save_file(file, folder_type: str) -> str:
     
     file_path = os.path.join(folder, filename)
     file.save(file_path)
-    return f"uploads/{folder_type}/{filename}"  # 返回相对路径
+    # 返回与实际保存位置一致的路径
+    # 从保存路径中提取相对于static的部分
+    relative_path = file_path.replace(Config.STATIC_FOLDER, '').lstrip(os.sep)
+    return relative_path

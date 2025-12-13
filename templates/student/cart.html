@@ -569,6 +569,26 @@
             fullAddress += ` (联系人：${selectedAddress.recipient}，电话：${selectedAddress.phone})`;
 
             $('#addressInput').val(fullAddress);
+        } else {
+            // 如果localStorage中没有已选地址，自动获取默认地址
+            $.ajax({
+                url: '/api/student/addresses',
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.code === 200 && res.data && Array.isArray(res.data)) {
+                        const addresses = res.data;
+                        // 查找默认地址
+                        const defaultAddress = addresses.find(addr => addr.is_default);
+                        if (defaultAddress) {
+                            // 自动选择默认地址
+                            confirmAddress(defaultAddress);
+                        }
+                    }
+                },
+                error: function () {
+                    console.error('获取地址列表失败，无法自动选择默认地址');
+                }
+            });
         }
 
         // 监听支付方式选择变化
@@ -662,8 +682,18 @@
                     alert('更新失败：' + (res ? res.msg : '未知错误'));
                 }
             },
-            error: function () {
-                alert('网络错误，无法更新商品数量');
+            error: function (xhr) {
+                // 尝试获取更详细的错误信息
+                let errorMsg = '网络错误，无法更新商品数量';
+                try {
+                    const errorData = JSON.parse(xhr.responseText);
+                    if (errorData && errorData.msg) {
+                        errorMsg = errorData.msg;
+                    }
+                } catch (e) {
+                    // 忽略解析错误
+                }
+                alert(errorMsg);
             },
             // complete: function () {
             //     // 恢复按钮状态

@@ -821,7 +821,7 @@
                                         <img src="/static/${dish.img_url}" class="rounded me-2" width="30" height="30">
                                         ${dish.dish_name}
                                     </td>
-                                    <td>${dish.sales}</td>
+                                    <td>售出${dish.sales}</td>
                                     <td>¥${(dish.total_amount || 0).toFixed(2)}</td>
                                 </tr>
                             `;
@@ -916,7 +916,16 @@
                 <tr>
                     <td>${comment.id}</td>
                     <td>${comment.order_no}</td>
-                    <td>${comment.content || '-'}</td>
+                    <td>
+                        ${comment.content || '-'}
+                        ${comment.img_urls && comment.img_urls.length > 0 ? `
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                ${comment.img_urls.map(img => `
+                                    <img src="${img}" alt="评论图片" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" onclick="openImagePreview('${img}');">
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </td>
                     <td>${dishStars}</td>
                     <td>${serviceStars}</td>
                     <td>${comment.create_time}</td>
@@ -1052,7 +1061,16 @@
                 <tr>
                     <td>${complaint.id}</td>
                     <td>${complaint.order_no || '-'}</td>
-                    <td class="text-truncate" style="max-width: 200px;" title="${complaint.content}">${complaint.content}</td>
+                    <td class="" title="${complaint.content}">
+                        ${complaint.content}
+                        ${complaint.img_urls && complaint.img_urls.length > 0 ? `
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                ${complaint.img_urls.map(img => `
+                                    <img src="${img}" alt="投诉图片" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" onclick="openImagePreview('${img}');">
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </td>
                     <td>${statusBadge}</td>
                     <td>${complaint.create_time}</td>
                     <td>${complaint.handle_time || '-'}</td>
@@ -1157,5 +1175,27 @@
         });
     }
 
+    // 打开图片预览模态框
+    function openImagePreview(imgUrl) {
+        $('#imagePreviewSrc').attr('src', imgUrl);
+        $('#imagePreviewModal').modal('show');
+    }
+
 </script>
+
+<!-- 图片预览模态框 -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header p-1 border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body p-1 d-flex justify-content-center align-items-center">
+                <img id="imagePreviewSrc" src="" alt="预览图片" class="img-fluid"
+                    style="max-height: 80vh; max-width: 100%;">
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

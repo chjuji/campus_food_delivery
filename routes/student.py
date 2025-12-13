@@ -235,9 +235,10 @@ def upload_avatar():
         if not os.path.exists(avatar_folder):
             os.makedirs(avatar_folder)
 
-        # 删除原头像文件
+        # 删除原头像文件（除非是默认头像）
         original_avatar = student.avatar
-        if original_avatar:
+        DEFAULT_AVATAR = 'default_avatar.jpg'
+        if original_avatar and original_avatar != DEFAULT_AVATAR:
             original_avatar_path = os.path.join(avatar_folder, original_avatar)
             if os.path.exists(original_avatar_path):
                 try:
@@ -779,11 +780,26 @@ def add_to_cart():
             if not dish.is_shelf:
                 return jsonify({'code': 400, 'msg': '该菜品已下架'}), 400
             
+            # 检查库存状态
+            if dish.stock == -1:
+                return jsonify({'code': 400, 'msg': '该菜品已售罄'}), 400
+            
             # 检查购物车中是否已有该菜品
             cart_item = Cart.query.filter_by(
                 student_id=student_id,
                 dish_id=dish_id
             ).first()
+            
+            # 计算新的数量
+            new_quantity = 0
+            if cart_item:
+                new_quantity = cart_item.quantity + quantity
+            else:
+                new_quantity = quantity
+            
+            # 检查库存是否足够（stock > 0时需要检查，0是无限库存）
+            if dish.stock > 0 and new_quantity > dish.stock:
+                return jsonify({'code': 400, 'msg': f'库存不足，当前库存为{dish.stock}'}), 400
             
             if cart_item:
                 # 更新数量
@@ -881,6 +897,19 @@ def update_cart_item(dish_id):
         
         data = request.json
         quantity = data.get('quantity', 1)
+        
+        # 检查菜品是否存在
+        dish = Dish.query.get(dish_id)
+        if not dish:
+            return jsonify({'code': 404, 'msg': '菜品不存在'}), 404
+        
+        # 检查库存状态
+        if dish.stock == -1:
+            return jsonify({'code': 400, 'msg': '该菜品已售罄'}), 400
+        
+        # 检查库存是否足够（stock > 0时需要检查，0是无限库存）
+        if dish.stock > 0 and quantity > dish.stock:
+            return jsonify({'code': 400, 'msg': f'库存不足，当前库存为{dish.stock}'}), 400
         
         cart_item = Cart.query.filter_by(dish_id=dish_id, student_id=student_id).first()
         if not cart_item:
@@ -1380,6 +1409,28 @@ def cancel_order(order_id):
                 print(f"  - 优惠券ID：{order.coupon_id}")
                 print(f"  - 用户优惠券ID：{user_coupon.id}")
         
+        # 只有待接单状态的订单才需要增加库存
+        if order.status == '待接单':
+            # 获取订单中的所有菜品
+            order_items = OrderItem.query.filter_by(order_id=order_id).all()
+            for item in order_items:
+                dish = Dish.query.get(item.dish_id)
+                if dish:
+                    # 如果库存为0，表示无限库存，不需要更新
+                    if dish.stock != 0:
+                        # 原库存
+                        old_stock = dish.stock
+                        # 订单中该菜品的数量
+                        order_quantity = item.quantity
+                        
+                        # 如果当前库存为-1，取消订单后直接变成订单数量
+                        if old_stock == -1:
+                            dish.stock = order_quantity
+                        else:
+                            # 否则库存加上订单数量
+                            dish.stock += order_quantity
+                        print(f"菜品 {dish.dish_name} 库存更新：原库存 {old_stock} -> 新库存 {dish.stock} (订单数量: {order_quantity})")
+
         # 将订单状态改为已取消
         order.status = '已取消'
         db.session.commit()
@@ -1538,7 +1589,8 @@ def get_complaints():
                 'order_no': order_no,  # 新增order_no字段
                 'created_at': create_time_str,
                 'status': english_status,
-                'response': complaint.handle_result or ''
+                'response': complaint.handle_result or '',
+                'img_urls': complaint.formatted_img_urls
             })
         
         return jsonify({
@@ -1627,14 +1679,10 @@ def submit_complaint():
             else:
                 return jsonify({'code': 401, 'msg': '用户身份验证失败'}), 401
         
-        # 获取请求数据
-        data = request.json
-        if not data:
-            return jsonify({'code': 400, 'msg': '请求数据不能为空'}), 400
-            
-        content = data.get('content', '').strip()
-        order_id = data.get('order_id')  # 前端使用order_id参数名，后端保持一致
-        print(f'提交投诉 - 内容长度: {len(content)}, 订单ID: {order_id}')
+        # 获取请求数据（FormData格式）
+        content = request.form.get('content', '').strip()
+        order_id = request.form.get('order_id')
+        merchant_id = request.form.get('merchant_id')
         
         # 验证数据
         if not content:
@@ -1644,14 +1692,13 @@ def submit_complaint():
             return jsonify({'code': 400, 'msg': '投诉内容至少需要10个字符'}), 400
         
         # 确保order_id为整数或None
-        if order_id and not isinstance(order_id, int):
+        if order_id:
             try:
                 order_id = int(order_id)
             except ValueError:
                 return jsonify({'code': 400, 'msg': '无效的订单ID'}), 400
         
         # 获取商户ID
-        merchant_id = None
         if order_id:
             # 从订单中获取商户ID
             from models.order import Order
@@ -1662,15 +1709,11 @@ def submit_complaint():
                 return jsonify({'code': 404, 'msg': '订单不存在'}), 404
         else:
             # 如果没有订单ID，直接从请求中获取商户ID
-            merchant_id = data.get('merchant_id')
-            
-            # 验证merchant_id
             if merchant_id:
-                if not isinstance(merchant_id, int):
-                    try:
-                        merchant_id = int(merchant_id)
-                    except ValueError:
-                        return jsonify({'code': 400, 'msg': '无效的商户ID'}), 400
+                try:
+                    merchant_id = int(merchant_id)
+                except ValueError:
+                    return jsonify({'code': 400, 'msg': '无效的商户ID'}), 400
                 
                 # 验证商户是否存在
                 from models.merchant import Merchant
@@ -1680,12 +1723,28 @@ def submit_complaint():
             else:
                 return jsonify({'code': 400, 'msg': '请选择关联订单或商户'}), 400
         
+        # 所有验证都通过后再处理图片上传
+        img_urls = []
+        images = request.files.getlist('images')
+        for image in images:
+            if image and image.filename:
+                try:
+                    # 使用项目中的save_file函数保存图片
+                    img_path = save_file(image, 'complaint')
+                    img_urls.append(f"/static/{img_path}")
+                except ValueError as ve:
+                    return jsonify({'code': 400, 'msg': f'图片上传失败：{str(ve)}'}), 400
+        
+        # 处理图片URLs
+        img_urls_str = ','.join(img_urls) if img_urls else None
+        
         # 创建投诉记录
         complaint = Complaint(
             student_id=user_id,
             order_id=order_id,
             merchant_id=merchant_id,
             content=content,
+            img_urls=img_urls_str,
             status='待处理'
         )
         
@@ -1701,6 +1760,15 @@ def submit_complaint():
         return jsonify({'code': 400, 'msg': f'参数错误：{str(ve)}'}), 400
     except Exception as e:
         db.session.rollback()
+        # 如果在图片上传后发生错误，需要删除已上传的图片
+        if 'img_urls' in locals() and img_urls:
+            import os
+            for img_url in img_urls:
+                # 提取相对路径（去掉/static/前缀）
+                img_path = img_url.replace('/static/', '')
+                full_path = os.path.join(os.getcwd(), 'static', img_path)
+                if os.path.exists(full_path):
+                    os.remove(full_path)
         print(f'提交投诉错误：{str(e)}')
         return jsonify({'code': 500, 'msg': '提交投诉失败：服务器内部错误'}), 500
 
@@ -1802,7 +1870,7 @@ def get_comments():
                 'dish_score': comment.dish_score,
                 'service_score': comment.service_score,
                 'content': comment.content,
-                'img_urls': comment.img_urls.split(',') if comment.img_urls else [],
+                'img_urls': comment.formatted_img_urls,
                 'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'merchant_reply': comment.merchant_reply,
                 'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
@@ -1846,18 +1914,6 @@ def submit_comment():
         service_score = request.form.get('service_score')
         content = request.form.get('content', '').strip()
         
-        # 处理图片上传
-        img_urls = []
-        images = request.files.getlist('images')
-        for image in images:
-            if image and image.filename:
-                try:
-                    # 使用项目中的save_file函数保存图片
-                    img_path = save_file(image, 'comment')
-                    img_urls.append(f"/static/{img_path}")
-                except ValueError as ve:
-                    return jsonify({'code': 400, 'msg': f'图片上传失败：{str(ve)}'}), 400
-        
         # 验证数据
         if not order_id:
             return jsonify({'code': 400, 'msg': '订单ID不能为空'}), 400
@@ -1890,6 +1946,18 @@ def submit_comment():
         # 获取商户ID
         merchant_id = order.merchant_id
         
+        # 所有验证都通过后再处理图片上传
+        img_urls = []
+        images = request.files.getlist('images')
+        for image in images:
+            if image and image.filename:
+                try:
+                    # 使用项目中的save_file函数保存图片
+                    img_path = save_file(image, 'comment')
+                    img_urls.append(f"/static/{img_path}")
+                except ValueError as ve:
+                    return jsonify({'code': 400, 'msg': f'图片上传失败：{str(ve)}'}), 400
+        
         # 处理图片URLs
         img_urls_str = ','.join(img_urls) if img_urls else None
         
@@ -1916,6 +1984,15 @@ def submit_comment():
         return jsonify({'code': 400, 'msg': f'参数错误：{str(ve)}'}), 400
     except Exception as e:
         db.session.rollback()
+        # 如果在图片上传后发生错误，需要删除已上传的图片
+        if 'img_urls' in locals() and img_urls:
+            import os
+            for img_url in img_urls:
+                # 提取相对路径（去掉/static/前缀）
+                img_path = img_url.replace('/static/', '')
+                full_path = os.path.join(os.getcwd(), 'static', img_path)
+                if os.path.exists(full_path):
+                    os.remove(full_path)
         print(f'提交评论错误：{str(e)}')
         return jsonify({'code': 500, 'msg': '提交评论失败：服务器内部错误'}), 500
 

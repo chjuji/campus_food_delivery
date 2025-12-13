@@ -221,7 +221,16 @@
 
             html += `
                     <tr>
-                        <td>${complaint.content || '-'}</td>
+                        <td>
+                            ${complaint.content || '-'}
+                            ${complaint.img_urls && complaint.img_urls.length > 0 ? `
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    ${complaint.img_urls.map(img => `
+                                        <img src="${img}" alt="投诉图片" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" onclick="openImagePreview('${img}');">
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </td>
                         <td>
                             ${complaint.order_no ?
                     `<a href="javascript:void(0);" onclick="viewOrderDetail('${complaint.order_id}');" class="text-primary">${complaint.order_no}</a>` :
@@ -321,7 +330,16 @@
         comments.forEach(comment => {
             html += `
                     <tr>
-                        <td>${comment.content || '-'}</td>
+                        <td>
+                            ${comment.content || '-'}
+                            ${comment.img_urls && comment.img_urls.length > 0 ? `
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    ${comment.img_urls.map(img => `
+                                        <img src="${img}" alt="评论图片" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" onclick="openImagePreview('${img}');">
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </td>
                         <td>
                             ${comment.order_no ?
                     `<a href="javascript:void(0);" onclick="viewOrderDetail('${comment.order_id}');" class="text-primary">${comment.order_no}</a>` :
@@ -497,6 +515,7 @@
         const content = $('#complaint-content').val().trim();
         const orderId = $('#complaint-order').val();
         const merchantId = $('#complaint-merchant').val();
+        const images = $('#complaint-images')[0].files;
 
         if (!content) {
             alert('请输入投诉内容');
@@ -513,17 +532,25 @@
             return;
         }
 
+        // 创建FormData对象
+        const formData = new FormData();
+        formData.append('content', content);
+        if (orderId) formData.append('order_id', orderId);
+        if (merchantId) formData.append('merchant_id', merchantId);
+
+        // 添加图片
+        for (let i = 0; i < images.length; i++) {
+            formData.append('images', images[i]);
+        }
+
         const token = localStorage.getItem('student_token');
         $.ajax({
             url: '/api/student/complaints',
             type: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
-            contentType: 'application/json',
-            data: JSON.stringify({
-                content: content,
-                order_id: orderId || null,
-                merchant_id: merchantId || null
-            }),
+            contentType: false, // 不设置contentType，由浏览器自动设置
+            processData: false, // 不处理数据，保持FormData格式
+            data: formData,
             success: function (res) {
                 if (res.code === 200) {
                     $('#complaintModal').modal('hide');
@@ -534,8 +561,13 @@
                     alert('投诉提交失败：' + res.msg);
                 }
             },
-            error: function () {
-                alert('网络错误，请稍后重试');
+            error: function (xhr) {
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    alert('投诉提交失败：' + res.msg);
+                } catch (e) {
+                    alert('网络错误，请稍后重试');
+                }
             }
         });
     }
@@ -724,6 +756,12 @@
         $('#orderDetailModal').modal('show');
     }
 
+    // 打开图片预览模态框
+    function openImagePreview(imgUrl) {
+        $('#imagePreviewSrc').attr('src', imgUrl);
+        $('#imagePreviewModal').modal('show');
+    }
+
     // 退出登录
     function logout() {
         localStorage.removeItem('student_token');
@@ -731,6 +769,22 @@
         window.location.href = '/student/login';
     }
 </script>
+
+<!-- 图片预览模态框 -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header p-1 border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body p-1 d-flex justify-content-center align-items-center">
+                <img id="imagePreviewSrc" src="" alt="预览图片" class="img-fluid"
+                    style="max-height: 80vh; max-width: 100%;">
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- 投诉表单模态框 -->
 <div class="modal fade" id="complaintModal" tabindex="-1" aria-labelledby="complaintModalLabel" aria-hidden="true">
@@ -763,6 +817,11 @@
                         <textarea class="form-control" id="complaint-content" rows="5"
                             placeholder="请详细描述您的投诉内容，至少10个字符"></textarea>
                         <div class="form-text text-muted">请准确、客观地描述问题，以便我们更好地为您解决。</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="complaint-images" class="form-label">上传图片（可选）</label>
+                        <input type="file" class="form-control" id="complaint-images" multiple accept="image/*">
+                        <div class="form-text text-muted">最多上传9张图片，每张图片不超过5MB</div>
                     </div>
                 </form>
             </div>

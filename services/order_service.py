@@ -6,6 +6,7 @@ from models.address import Address
 from models.merchant import Merchant
 from models.platform_config import PlatformConfig
 from models.coupon import Coupon, UserCoupon
+from models.dish import Dish
 from app import db
 
 def create_order(student_id: int, merchant_id: int, address_id: int, remark: str = '', coupon = None, cart_item_ids=None, status='待支付', user_coupon=None):
@@ -98,6 +99,19 @@ def create_order(student_id: int, merchant_id: int, address_id: int, remark: str
         db.session.add(order_item)
         # 清空购物车
         db.session.delete(item)
+        
+        # 如果订单状态不是待支付（即已经支付），更新库存
+        if status != '待支付':
+            # 获取菜品信息
+            dish = Dish.query.get(item.dish_id)
+            if dish and dish.stock != 0:  # 库存为0表示无限库存，不做处理
+                # 当前库存等于订单数量时，支付成功后直接变为-1
+                if dish.stock == item.quantity:
+                    dish.stock = -1
+                else:
+                    # 其他情况下库存减去订单数量
+                    dish.stock -= item.quantity
+                print(f"订单创建时，菜品 {dish.dish_name} 库存更新：原库存 {dish.stock + item.quantity}，订单数量 {item.quantity}，新库存 {dish.stock}")
     
     # 如果订单状态不是待支付，说明已经支付，需要给商户钱包加钱
     if status != '待支付':

@@ -15,5 +15,20 @@ class Complaint(db.Model):
     create_time = db.Column(db.DateTime, default=datetime.now, comment='投诉时间')
     handle_time = db.Column(db.DateTime, comment='处理时间')
 
+    @property
+    def formatted_img_urls(self):
+        """将投诉图片URL中的单数形式路径转换为复数形式"""
+        if not self.img_urls:
+            return []
+        urls = self.img_urls.split(',')
+        formatted_urls = []
+        for url in urls:
+            if '/static/uploads/complaint/' in url:
+                # 将单数路径转换为复数路径
+                formatted_urls.append(url.replace('/static/uploads/complaint/', '/static/uploads/complaints/'))
+            else:
+                formatted_urls.append(url)
+        return formatted_urls
+
     def __repr__(self):
         return f'<Complaint {self.id}>'

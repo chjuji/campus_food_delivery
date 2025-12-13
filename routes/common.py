@@ -19,30 +19,70 @@ def get_categories():
 # 获取商户列表
 @common_bp.get('/merchants')
 def get_merchants():
+    from models.order import Order, OrderItem
+    
     merchants = Merchant.query.filter_by(status=1).all()  # 只显示已通过审核的
-    data = [{
-        'id': m.id,
-        'name': m.merchant_name,
-        'address': m.address,
-        'contact_phone': m.contact_phone,
-        'logo': m.logo,  # 添加Logo字段
-        'description': getattr(m, 'description', ''),  # 添加描述字段
-        'month_sales': 0  # 添加月售字段，暂时设为0
-    } for m in merchants]
+    data = []
+    
+    for m in merchants:
+        # 计算商户所有菜品的总售出量
+        total_sales = 0
+        # 1. 获取商户的所有菜品
+        dishes = Dish.query.filter_by(merchant_id=m.id).all()
+        if dishes:
+            # 2. 获取所有菜品的ID
+            dish_ids = [d.id for d in dishes]
+            # 3. 查询这些菜品的所有订单项（已送达订单）
+            order_items = OrderItem.query.join(Order).filter(
+                OrderItem.dish_id.in_(dish_ids),
+                Order.status == '已送达'
+            ).all()
+            # 4. 计算总数量
+            total_sales = sum(item.quantity for item in order_items)
+        
+        data.append({
+            'id': m.id,
+            'name': m.merchant_name,
+            'address': m.address,
+            'contact_phone': m.contact_phone,
+            'logo': m.logo if m.logo else 'uploads/merchant/default.svg',  # 添加默认Logo
+            'description': getattr(m, 'description', ''),  # 添加描述字段
+            'total_sales': total_sales  # 修改为总售出量
+        })
+    
     return jsonify({'code': 200, 'data': data})
 
 # 获取菜品列表
 @common_bp.get('/dishes/<int:merchant_id>')
 def get_dishes(merchant_id):
-    dishes = Dish.query.filter_by(merchant_id=merchant_id, is_shelf=True).all()
-    data = [{
-        'id': d.id,
-        'name': d.dish_name,
-        'price': d.price,
-        'category': d.category,
-        'img_url': d.img_url,
-        'description': d.description
-    } for d in dishes]
+    from models.order import Order, OrderItem
+    
+    dishes = Dish.query.filter_by(merchant_id=merchant_id).all()
+    data = []
+    
+    for d in dishes:
+        # 计算菜品的总售出量
+        sales = 0
+        # 查询该菜品的所有订单项（已送达订单）
+        order_items = OrderItem.query.join(Order).filter(
+            OrderItem.dish_id == d.id,
+            Order.status == '已送达'
+        ).all()
+        # 计算总数量
+        sales = sum(item.quantity for item in order_items)
+        
+        data.append({
+                'id': d.id,
+                'name': d.dish_name,
+                'price': d.price,
+                'stock': d.stock,  # 添加库存信息
+                'category': d.category,
+                'img_url': d.img_url,
+                'description': d.description,
+                'sales': sales,  # 添加总售出量
+                'is_shelf': d.is_shelf  # 添加上下架状态
+            })
+    
     return jsonify({'code': 200, 'data': data})
 
 # 获取菜品评论
@@ -80,7 +120,7 @@ def get_dish_comments(dish_id):
                 'content': comment.content,
                 'dish_score': comment.dish_score,
                 'service_score': comment.service_score,
-                'img_urls': comment.img_urls.split(',') if comment.img_urls else [],
+                'img_urls': comment.formatted_img_urls,
                 'create_time': comment.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'merchant_reply': comment.merchant_reply,
                 'reply_time': comment.reply_time.strftime('%Y-%m-%d %H:%M:%S') if comment.reply_time else None
@@ -100,8 +140,10 @@ def get_dishes_by_category():
     if not category:
         return jsonify({'code': 400, 'msg': '缺少category参数'}), 400
     
-    # 查询该类别下的所有上架菜品
-    dishes = Dish.query.filter_by(category=category, is_shelf=True).all()
+    # 查询该类别下的所有菜品（包括下架）
+    dishes = Dish.query.filter_by(category=category).all()
+    
+    from models.order import Order, OrderItem
     
     # 构建菜品列表，包含商户名称
     data = []
@@ -109,16 +151,28 @@ def get_dishes_by_category():
         # 获取对应的商户信息
         merchant = Merchant.query.get(dish.merchant_id)
         if merchant:
+            # 计算菜品的总售出量
+            sales = 0
+            # 查询该菜品的所有订单项（已送达订单）
+            order_items = OrderItem.query.join(Order).filter(
+                OrderItem.dish_id == dish.id,
+                Order.status == '已送达'
+            ).all()
+            # 计算总数量
+            sales = sum(item.quantity for item in order_items)
+            
             data.append({
                 'id': dish.id,
                 'name': dish.dish_name,
                 'price': dish.price,
+                'stock': dish.stock,  # 添加库存信息
                 'category': dish.category,
                 'img_url': dish.img_url,
                 'description': dish.description,
                 'merchant_id': dish.merchant_id,
                 'merchant_name': merchant.merchant_name,
-                'sales': 0  # 暂时设为0，实际应该从订单项目中统计
+                'sales': sales,  # 计算总售出量
+                'is_shelf': dish.is_shelf  # 添加上下架状态
             })
     
     return jsonify({'code': 200, 'data': data})
@@ -126,8 +180,10 @@ def get_dishes_by_category():
 # 获取所有菜品
 @common_bp.get('/all_dishes')
 def get_all_dishes():
-    # 查询所有上架菜品
-    dishes = Dish.query.filter_by(is_shelf=True).all()
+    # 查询所有菜品（包括下架）
+    dishes = Dish.query.all()
+    
+    from models.order import Order, OrderItem
     
     # 构建菜品列表，包含商户名称
     data = []
@@ -135,16 +191,28 @@ def get_all_dishes():
         # 获取对应的商户信息
         merchant = Merchant.query.get(dish.merchant_id)
         if merchant:
+            # 计算菜品的总售出量
+            sales = 0
+            # 查询该菜品的所有订单项（已送达订单）
+            order_items = OrderItem.query.join(Order).filter(
+                OrderItem.dish_id == dish.id,
+                Order.status == '已送达'
+            ).all()
+            # 计算总数量
+            sales = sum(item.quantity for item in order_items)
+            
             data.append({
                 'id': dish.id,
                 'name': dish.dish_name,
                 'price': dish.price,
+                'stock': dish.stock,  # 添加库存信息
                 'category': dish.category,
                 'img_url': dish.img_url,
                 'description': dish.description,
                 'merchant_id': dish.merchant_id,
                 'merchant_name': merchant.merchant_name,
-                'sales': 0  # 暂时设为0，实际应该从订单项目中统计
+                'sales': sales,  # 计算总售出量
+                'is_shelf': dish.is_shelf  # 添加上下架状态
             })
     
     return jsonify({'code': 200, 'data': data})

@@ -109,6 +109,7 @@
                         <label for="complaintContent" class="form-label">投诉内容</label>
                         <textarea class="form-control" id="complaintContent" rows="5" placeholder="请详细描述您的投诉内容..."
                             required></textarea>
+                        <div class="form-text text-muted">至少需要10个字符</div>
                     </div>
                     <div class="mb-3">
                         <label for="complaintImages" class="form-label">上传图片（可选）</label>
@@ -180,6 +181,7 @@
                         <label for="commentContent" class="form-label">评价内容</label>
                         <textarea class="form-control" id="commentContent" rows="5" placeholder="请分享您的用餐体验..."
                             required></textarea>
+                        <div class="form-text text-muted">至少需要5个字符</div>
                     </div>
                     <div class="mb-3">
                         <label for="commentImages" class="form-label">上传图片</label>
@@ -919,13 +921,13 @@
                     $('#commentModal').modal('hide');
                     loadOrders(); // 重新加载订单列表
                 } else {
-                    alert('评价提交失败：' + res.msg);
+                    alert(res.msg);
                 }
             },
             error: function (xhr) {
                 try {
                     const res = JSON.parse(xhr.responseText);
-                    alert('评价提交失败：' + res.msg);
+                    alert(res.msg);
                 } catch (e) {
                     alert('网络错误，请稍后重试');
                 }

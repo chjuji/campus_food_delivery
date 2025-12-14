@@ -17,8 +17,8 @@ class Coupon(db.Model):
     create_time = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     is_active = db.Column(db.Boolean, default=False, comment='是否激活')
 
-    # 关联用户领取记录
-    user_coupons = db.relationship('UserCoupon', backref='coupon', lazy=True)
+    # 关联用户领取记录，级联删除
+    user_coupons = db.relationship('UserCoupon', backref='coupon', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Coupon {self.coupon_name}>'
@@ -28,7 +28,7 @@ class UserCoupon(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False, comment='学生ID')
-    coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id'), nullable=False, comment='优惠券ID')
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id', ondelete="CASCADE"), nullable=False, comment='优惠券ID')
     is_used = db.Column(db.Boolean, default=False, comment='是否使用')
     use_time = db.Column(db.DateTime, comment='使用时间')
     get_time = db.Column(db.DateTime, default=datetime.now, comment='领取时间')

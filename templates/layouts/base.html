@@ -265,6 +265,33 @@
         // 通用退出登录函数
         function logout() {
             const userType = UserAuthManager.getUserType();
+            const token = UserAuthManager.getToken();
+
+            // 构造退出登录请求
+            let logoutUrl = '';
+            if (userType === 'merchant') {
+                logoutUrl = '/api/merchant/logout';
+            } else if (userType === 'student') {
+                logoutUrl = '/api/student/logout';
+            } else if (userType === 'admin') {
+                logoutUrl = '/api/admin/logout';
+            }
+
+            // 发送退出登录请求到后端
+            if (logoutUrl && token) {
+                $.ajax({
+                    url: logoutUrl,
+                    type: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    async: false, // 同步请求，确保Session清除后再跳转
+                    success: function () {
+                        console.log('后端Session已清除');
+                    },
+                    error: function () {
+                        console.error('清除后端Session失败');
+                    }
+                });
+            }
 
             // 清除对应类型的用户信息
             if (userType === 'merchant') {

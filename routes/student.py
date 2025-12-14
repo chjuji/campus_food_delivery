@@ -73,8 +73,11 @@ def register():
         return jsonify({'code': 400, 'msg': '学号已注册'})
     if phone and Student.query.filter_by(phone=phone).first():
         return jsonify({'code': 400, 'msg': '手机号已注册'})
-    if len(password) < 8:
+    # 验证密码长度8-20位且包含字母和数字
+    if len(password) < 8 or len(password) > 20:
         return jsonify({'code': 400, 'msg': '密码需8-20位'})
+    if not (any(char.isalpha() for char in password) and any(char.isdigit() for char in password)):
+        return jsonify({'code': 400, 'msg': '密码必须包含字母和数字'})
     required = ['student_id', 'name', 'password']
     if not all(k in data for k in required):
         return jsonify({'code': 400, 'msg': '缺少必填字段'})
@@ -192,9 +195,11 @@ def change_password_impl():
         if not bcrypt.checkpw(current_password.encode('utf-8'), student.password.encode('utf-8')):
             return jsonify({'code': 400, 'msg': '当前密码错误'}), 400
         
-        # 验证新密码长度
-        if len(new_password) < 8:
-            return jsonify({'code': 400, 'msg': '新密码长度不能少于8位'}), 400
+        # 验证新密码长度和复杂度
+        if len(new_password) < 8 or len(new_password) > 20:
+            return jsonify({'code': 400, 'msg': '新密码长度需8-20位'}), 400
+        if not (any(char.isalpha() for char in new_password) and any(char.isdigit() for char in new_password)):
+            return jsonify({'code': 400, 'msg': '新密码必须包含字母和数字'}), 400
         
         # 更新密码
         hashed_pwd = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())

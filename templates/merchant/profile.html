@@ -111,11 +111,14 @@
                     </div>
                     <div class="form-group mb-3">
                         <label for="newPassword">新密码</label>
-                        <input type="password" class="form-control" id="newPassword" placeholder="请输入新密码">
+                        <input type="password" class="form-control" id="newPassword" placeholder="请输入新密码" minlength="8"
+                            maxlength="20" required>
+                        <div class="form-text text-muted">8-20位，含字母、数字、特殊符号</div>
                     </div>
                     <div class="form-group mb-3">
                         <label for="confirmPassword">确认新密码</label>
-                        <input type="password" class="form-control" id="confirmPassword" placeholder="请再次输入新密码">
+                        <input type="password" class="form-control" id="confirmPassword" placeholder="请再次输入新密码"
+                            minlength="8" maxlength="20" required>
                     </div>
                 </form>
             </div>
@@ -241,6 +244,28 @@
         if (!confirmPassword) {
             alert('请确认新密码');
             document.getElementById('confirmPassword').focus();
+            return;
+        }
+
+        // 验证新密码条件
+        if (newPassword.length < 8 || newPassword.length > 20) {
+            alert('新密码长度必须在8-20位之间');
+            document.getElementById('newPassword').focus();
+            return;
+        }
+        if (!/[a-zA-Z]/.test(newPassword)) {
+            alert('新密码必须包含字母');
+            document.getElementById('newPassword').focus();
+            return;
+        }
+        if (!/\d/.test(newPassword)) {
+            alert('新密码必须包含数字');
+            document.getElementById('newPassword').focus();
+            return;
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>\[\]]/.test(newPassword)) {
+            alert('新密码必须包含特殊符号');
+            document.getElementById('newPassword').focus();
             return;
         }
 

@@ -68,7 +68,7 @@
                     </div>
                     <div class="col-md-6">
                         <label for="contactPhone" class="form-label">联系电话 <span class="text-danger">*</span></label>
-                        <input type="tel" class="form-control" id="contactPhone" required pattern="^1[3-9]\d{9}$"
+                        <input type="tel" class="form-control" id="contactPhone" required pattern="^1\d{10}$"
                             placeholder="请输入11位手机号">
                         <div class="invalid-feedback">请输入有效的11位手机号</div>
                     </div>
@@ -94,7 +94,7 @@
                     <div class="col-12">
                         <label for="licenseImg" class="form-label">营业执照照片 <span class="text-danger">*</span></label>
                         <input type="file" class="form-control" id="licenseImg" required accept="image/jpeg,image/png">
-                        <p class="upload-hint">支持JPG、PNG格式，文件大小不超过5MB，需清晰展示营业执照信息</p>
+                        <p class="upload-hint">支持JPG、PNG格式，需清晰展示营业执照信息</p>
                         <div class="invalid-feedback">请上传营业执照照片</div>
                         <!-- <label for="licenseImg" class="form-label">营业执照照片 <span class="text-muted">(选填)</span></label>
                         <input type="file" class="form-control" id="licenseImg" accept="image/jpeg,image/png">
@@ -103,7 +103,7 @@
                     <div class="col-12">
                         <label for="foodLicenseImg" class="form-label">商铺Logo</label>
                         <input type="file" class="form-control" id="foodLicenseImg" accept="image/jpeg,image/png">
-                        <p class="upload-hint">支持JPG、PNG格式，文件大小不超过5MB</p>
+                        <p class="upload-hint">支持JPG、PNG格式</p>
                     </div>
                 </div>
             </div>
@@ -159,7 +159,7 @@
                 formData.append('address', $('#address').val());
                 formData.append('license_img', $('#licenseImg')[0].files[0]);
                 formData.append('logo', $('#foodLicenseImg')[0].files[0]);
-                
+
                 // 收集表单数据（文件上传需用FormData），仅在选择文件时才 append
                 // const formData = new FormData();
                 // formData.append('merchant_name', $('#merchantName').val());

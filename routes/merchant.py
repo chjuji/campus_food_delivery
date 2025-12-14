@@ -1151,9 +1151,15 @@ def update_merchant_password():
         if not bcrypt.check_password_hash(merchant.password, current_password):
             return jsonify({'success': False, 'message': '当前密码不正确'})
         
-        # 检查新密码长度
-        if len(new_password) < 6:
-            return jsonify({'success': False, 'message': '新密码长度不能少于6位'})
+        # 检查新密码条件（与注册时一致）
+        if len(new_password) < 8 or len(new_password) > 20:
+            return jsonify({'success': False, 'message': '新密码长度必须在8-20位之间'})
+        if not any(c.isalpha() for c in new_password):
+            return jsonify({'success': False, 'message': '新密码必须包含字母'})
+        if not any(c.isdigit() for c in new_password):
+            return jsonify({'success': False, 'message': '新密码必须包含数字'})
+        if not any(c in '!@#$%^&*(),.?":{}|<>[]' for c in new_password):
+            return jsonify({'success': False, 'message': '新密码必须包含特殊符号'})
         
         # 使用bcrypt加密新密码
         hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')

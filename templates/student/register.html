@@ -24,7 +24,7 @@
                 <input type="tel" class="form-control" id="phone" required>
             </div>
             <div class="mb-3">
-                <label for="password" class="form-label">密码（8-20位，含字母、数字、特殊符号）</label>
+                <label for="password" class="form-label">密码（8-20位，含字母、数字）</label>
                 <input type="password" class="form-control" id="password" required>
             </div>
             <button type="submit" class="btn btn-primary w-100">注册</button>
@@ -38,11 +38,42 @@
     <script>
         $('#registerForm').submit(function (e) {
             e.preventDefault();
+            const studentId = $('#studentId').val();
+            const name = $('#name').val();
+            const phone = $('#phone').val();
+            const password = $('#password').val();
+
+            // 前端验证
+            if (!studentId) {
+                alert('请输入学号');
+                return;
+            }
+            if (!name) {
+                alert('请输入姓名');
+                return;
+            }
+            if (!phone) {
+                alert('请输入手机号');
+                return;
+            }
+            if (!password) {
+                alert('请输入密码');
+                return;
+            }
+            if (password.length < 8 || password.length > 20) {
+                alert('密码需8-20位');
+                return;
+            }
+            if (!(/[a-zA-Z]/.test(password) && /[0-9]/.test(password))) {
+                alert('密码必须包含字母和数字');
+                return;
+            }
+
             const data = {
-                student_id: $('#studentId').val(),
-                name: $('#name').val(),
-                phone: $('#phone').val(),
-                password: $('#password').val()
+                student_id: studentId,
+                name: name,
+                phone: phone,
+                password: password
             };
             // 调用注册API
             $.ajax({

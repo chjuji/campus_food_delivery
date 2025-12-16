@@ -68,19 +68,16 @@ def register():
     password = data.get('password')
     name = data.get('name')
 
+    # 使用验证器验证参数
+    validation_result = validate_student_register(data)
+    if not validation_result['valid']:
+        return jsonify({'code': 400, 'msg': validation_result['msg']})
+
     # 校验逻辑（示例）
     if Student.query.filter_by(student_id=student_id).first():
         return jsonify({'code': 400, 'msg': '学号已注册'})
     if phone and Student.query.filter_by(phone=phone).first():
         return jsonify({'code': 400, 'msg': '手机号已注册'})
-    # 验证密码长度8-20位且包含字母和数字
-    if len(password) < 8 or len(password) > 20:
-        return jsonify({'code': 400, 'msg': '密码需8-20位'})
-    if not (any(char.isalpha() for char in password) and any(char.isdigit() for char in password)):
-        return jsonify({'code': 400, 'msg': '密码必须包含字母和数字'})
-    required = ['student_id', 'name', 'password']
-    if not all(k in data for k in required):
-        return jsonify({'code': 400, 'msg': '缺少必填字段'})
     
     # 密码加密
     hashed_pwd = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())

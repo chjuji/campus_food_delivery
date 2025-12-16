@@ -69,7 +69,12 @@
                 },
                 error: function (xhr) {
                     console.error('登录请求失败:', xhr.responseText); // 新增错误调试
-                    alert('登录失败，请重试');
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        alert(res.msg || '登录失败，请重试');
+                    } catch (e) {
+                        alert('登录失败，请重试');
+                    }
                 }
             });
         });

@@ -208,11 +208,19 @@ def register():
     form = request.form
     files = request.files
 
-    # 简单校验（表单字段）
-    required = ['merchant_name', 'contact_name', 'contact_phone', 'password', 'address']
-    for key in required:
-        if not form.get(key):
-            return jsonify({'code': 400, 'msg': f'{key} 为必填项'}), 400
+    # 使用验证器验证参数
+    from utils.validator import validate_merchant_register
+    data = {
+        'merchant_name': form.get('merchant_name'),
+        'contact_name': form.get('contact_name'),
+        'contact_phone': form.get('contact_phone'),
+        'password': form.get('password'),
+        'address': form.get('address')
+    }
+    
+    validation_result = validate_merchant_register(data)
+    if not validation_result['valid']:
+        return jsonify({'code': 400, 'msg': validation_result['msg']}), 400
 
     # 处理文件上传（可选）
     license_path = ''
@@ -389,6 +397,11 @@ def merchant_web_register():
     # 检查用户名是否已存在
     if Merchant.query.filter_by(username=username).first():
         return jsonify({'success': False, 'message': '用户名已存在'})
+    
+    # 验证密码格式
+    from utils.validator import validate_password
+    if not validate_password(password):
+        return jsonify({'success': False, 'message': '密码需8-20位，包含字母、数字和特殊符号(!@#$%^&*(),.?":{}|<>[])'})
     
     # 创建新商户
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')

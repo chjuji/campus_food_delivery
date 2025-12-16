@@ -1457,7 +1457,7 @@ ${isOutOfStock ? '<div class="position-absolute top-50 start-50 translate-middle
                             ${comment.img_urls && comment.img_urls.length > 0 ? `
                                 <div class="d-flex flex-wrap gap-2 mb-2">
                                     ${comment.img_urls.map(img => `
-                                        <img src="/static/${img}" alt="评论图片" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                        <img src="${img}" alt="评论图片" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
                                     `).join('')}
                                 </div>
                             ` : ''}

@@ -130,7 +130,7 @@
                 const password = $(this).val();
                 const hasLetter = /[a-zA-Z]/.test(password);
                 const hasNumber = /\d/.test(password);
-                const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+                const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]]/.test(password);
 
                 if (password.length >= 8 && password.length <= 20 && hasLetter && hasNumber && hasSpecial) {
                     $(this).removeClass('is-invalid').addClass('is-valid');
@@ -172,7 +172,7 @@
                 // const logoFile = $('#foodLicenseImg')[0].files[0];
                 // if (foodFile) formData.append('logo', foodFile);
 
-                // 提交注册请求（注意：文件上传需设置contentType: false）
+                // 提交注册请求（注意：文件上传需用FormData）
                 $.ajax({
                     url: '/api/merchant/register',  // 对应后端API接口
                     type: 'POST',
@@ -188,7 +188,14 @@
                         }
                     },
                     error: function (xhr) {
-                        alert('网络错误，请稍后重试');
+                        try {
+                            // 尝试解析后端返回的错误信息
+                            const res = JSON.parse(xhr.responseText);
+                            alert('提交失败：' + res.msg);
+                        } catch (e) {
+                            // 如果解析失败，显示默认提示
+                            alert('网络错误，请稍后重试');
+                        }
                         console.error(xhr.responseText);
                     }
                 });

@@ -72,9 +72,16 @@
                 success: function (res) {
                     if (res.code === 200) {
                         // 保存Token到本地存储
+                        // 清除可能存在的旧地址信息
+                        localStorage.removeItem('selectedAddress');
+                        localStorage.removeItem('orderRemark');
+                        localStorage.removeItem('selectedCoupon');
+                        localStorage.removeItem('currentCart');
+
                         localStorage.setItem('student_token', res.data.token);
                         localStorage.setItem('userInfo', JSON.stringify(res.data.user_info));
                         alert('登录成功');
+                        // 跳转到学生首页
                         window.location.href = '/student/index'; // 跳转到首页
                     } else {
                         alert(res.msg);

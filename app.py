@@ -132,7 +132,11 @@ def create_app():
     def student_index_page():
         return render_template('student/index.html')
 
+    # 导入登录验证装饰器
+    from routes.student import api_login_required
+    
     @app.route('/student/cart')
+    @api_login_required
     def student_cart_page():
         return render_template('student/cart.html')
 

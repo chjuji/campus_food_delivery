@@ -26,7 +26,12 @@ def api_login_required(f):
     def decorated_function(*args, **kwargs):
         # 首先检查session中是否有登录信息
         if 'student_id' in session:
-            return f(*args, **kwargs)
+            # 检查session中的student_id是否有效
+            student_id = session['student_id']
+            if isinstance(student_id, int):
+                student = Student.query.get(student_id)
+                if student:
+                    return f(*args, **kwargs)
         
         # 然后检查JWT token
         try:
@@ -37,11 +42,15 @@ def api_login_required(f):
             if identity and ':' in identity:
                 user_type, user_id = identity.split(':', 1)
                 if user_type == 'student':
-                    # 将student_id添加到session中以便后续使用
-                    session['student_id'] = int(user_id)
-                    return f(*args, **kwargs)
-        except Exception:
-            pass
+                    # 检查user_id是否有效
+                    user_id = int(user_id)
+                    student = Student.query.get(user_id)
+                    if student:
+                        # 将student_id添加到session中以便后续使用
+                        session['student_id'] = user_id
+                        return f(*args, **kwargs)
+        except Exception as e:
+            print(f'JWT token验证错误：{str(e)}')
         
         return jsonify({'code': 401, 'msg': '未登录'}), 401
     decorated_function.__name__ = f.__name__
@@ -117,6 +126,12 @@ def login():
         # 如果返回包含具体错误信息，直接传递给前端
         msg = result.get('error') if isinstance(result, dict) else '账号或密码错误'
         return jsonify({'code': 401, 'msg': msg}), 401
+    
+    # 在session中设置学生ID
+    student = Student.query.filter_by(student_id=login_id).first() or \
+              Student.query.filter_by(phone=login_id).first()
+    if student:
+        session['student_id'] = student.id
     
     return jsonify({
         'code': 200,
@@ -602,6 +617,10 @@ def wallet_pay():
         
         if not password or amount is None:
             return jsonify({'code': 400, 'msg': '请输入支付密码和金额'}), 400
+        
+        # 检查是否已设置支付密码
+        if not student.pay_password:
+            return jsonify({'code': 402, 'msg': '未设置支付密码'}), 402
         
         # 验证支付密码格式（6位数字）
         if not validate_pay_password(password):

@@ -34,6 +34,10 @@ def pay_order(order_id):
     if not student:
         return jsonify({'code': 404, 'msg': '用户不存在'}), 404
     
+    # 检查是否已设置支付密码
+    if not student.pay_password:
+        return jsonify({'code': 402, 'msg': '未设置支付密码'}), 402
+    
     # 验证支付密码
     if not bcrypt.checkpw(pay_password.encode('utf-8'), student.pay_password.encode('utf-8')):
         return jsonify({'code': 400, 'msg': '支付密码错误'}), 400

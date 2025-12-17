@@ -236,6 +236,7 @@
                     <label for="payPassword" class="form-label">请输入6位支付密码</label>
                     <input type="password" class="form-control" id="payPassword" placeholder="请输入支付密码" maxlength="6"
                         pattern="\d{6}" inputmode="numeric">
+                    <small class="text-muted">若未设置支付密码，请随机输入6位数字密码并点击确认支付</small>
                 </div>
                 <div id="passwordError" class="alert alert-danger d-none">支付密码错误，请重新输入</div>
             </div>
@@ -562,15 +563,46 @@
         // 检查地址
         const selectedAddress = JSON.parse(localStorage.getItem('selectedAddress')) || null;
         if (selectedAddress) {
-            // 构建完整的地址字符串，与confirmAddress函数保持一致
-            let fullAddress = selectedAddress.full_address || `${selectedAddress.province}${selectedAddress.city}${selectedAddress.district}${selectedAddress.detail_address}`;
-
-            // 添加联系人信息
-            fullAddress += ` (联系人：${selectedAddress.recipient}，电话：${selectedAddress.phone})`;
-
-            $('#addressInput').val(fullAddress);
+            // 验证localStorage中的地址是否属于当前学生
+            $.ajax({
+                url: '/api/student/addresses',
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.code === 200 && res.data && Array.isArray(res.data)) {
+                        const addresses = res.data;
+                        // 检查localStorage中的地址是否存在于当前学生的地址列表中
+                        const isValidAddress = addresses.some(addr => addr.id === selectedAddress.id);
+                        if (isValidAddress) {
+                            // 地址有效，使用它
+                            // 构建完整的地址字符串，与confirmAddress函数保持一致
+                            let fullAddress = selectedAddress.full_address || `${selectedAddress.province}${selectedAddress.city}${selectedAddress.district}${selectedAddress.detail_address}`;
+                            // 添加联系人信息
+                            fullAddress += ` (联系人：${selectedAddress.recipient}，电话：${selectedAddress.phone})`;
+                            $('#addressInput').val(fullAddress);
+                        } else {
+                            // 地址无效，清除localStorage
+                            localStorage.removeItem('selectedAddress');
+                            // 自动获取当前学生的默认地址
+                            getDefaultAddress();
+                        }
+                    } else {
+                        // 获取地址列表失败，清除localStorage
+                        localStorage.removeItem('selectedAddress');
+                    }
+                },
+                error: function () {
+                    console.error('验证地址有效性失败');
+                    // 验证失败，清除localStorage
+                    localStorage.removeItem('selectedAddress');
+                }
+            });
         } else {
             // 如果localStorage中没有已选地址，自动获取默认地址
+            getDefaultAddress();
+        }
+
+        // 获取默认地址的函数
+        function getDefaultAddress() {
             $.ajax({
                 url: '/api/student/addresses',
                 type: 'GET',
@@ -2024,6 +2056,12 @@
             error: function (xhr) {
                 // 尝试解析错误响应
                 let errorMessage = '网络错误，请稍后重试';
+                if (xhr.status === 402) {
+                    // 未设置支付密码，跳转到支付密码设置页面
+                    alert('您还未设置支付密码，请先设置支付密码');
+                    window.location.href = '/student/set-pay-password';
+                    return;
+                }
                 if (xhr.responseText) {
                     try {
                         const errorResponse = JSON.parse(xhr.responseText);

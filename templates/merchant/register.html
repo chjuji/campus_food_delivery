@@ -75,8 +75,9 @@
                     <div class="col-md-6">
                         <label for="password" class="form-label">登录密码 <span class="text-danger">*</span></label>
                         <input type="password" class="form-control" id="password" required minlength="8" maxlength="20"
-                            placeholder="8-20位，含字母、数字、特殊符号">
-                        <div class="invalid-feedback">密码需8-20位，且包含字母、数字和特殊符号</div>
+                            placeholder="8-20位，含字母、数字和特殊符号">
+                        <div class="invalid-feedback">密码需8-20位，且包含字母、数字和指定特殊符号</div>
+                        <div class="valid-feedback">密码强度符合要求</div>
                     </div>
                     <div class="col-12">
                         <label for="address" class="form-label">店铺地址 <span class="text-danger">*</span></label>
@@ -128,11 +129,17 @@
             // 密码复杂度验证（字母、数字、特殊符号）
             $('#password').on('input', function () {
                 const password = $(this).val();
+                // 检查是否包含字母
                 const hasLetter = /[a-zA-Z]/.test(password);
+                // 检查是否包含数字
                 const hasNumber = /\d/.test(password);
-                const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]]/.test(password);
+                // 检查是否包含指定的特殊符号
+                const hasSpecial = /[!@#$%^&*(),.?":{}|<>[\]]/.test(password);
+                // 检查长度是否在8-20位之间
+                const isValidLength = password.length >= 8 && password.length <= 20;
 
-                if (password.length >= 8 && password.length <= 20 && hasLetter && hasNumber && hasSpecial) {
+                // 当所有条件都满足时，密码输入框变为绿色
+                if (hasLetter && hasNumber && hasSpecial && isValidLength) {
                     $(this).removeClass('is-invalid').addClass('is-valid');
                 } else {
                     $(this).removeClass('is-valid').addClass('is-invalid');

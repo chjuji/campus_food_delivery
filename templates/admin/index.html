@@ -524,13 +524,13 @@
                         <td>
                             <!-- 营业执照图片（点击查看大图） -->
                             <img src="/static/${merchant.license_img}" class="license-img rounded" 
-                                 onclick="showLicense('/static/${merchant.license_img}')" 
+                                 onclick="showLicense('/static/${merchant.license_img}', '营业执照')" 
                                  alt="营业执照">
                         </td>
                         <td>
                             <!-- Logo图片 -->
                             <img src="/static/${merchant.logo || 'uploads/merchant/default.svg'}" class="license-img rounded"
-                                 onclick="showLicense('/static/${merchant.logo || 'uploads/merchant/default.svg'}')" 
+                                 onclick="showLicense('/static/${merchant.logo || 'uploads/merchant/default.svg'}', 'Logo')" 
                                  alt="商铺Logo">
                         </td>
                         <td>${statusBadge}</td>
@@ -621,7 +621,7 @@
                 let avatarHtml = '';
                 if (student.avatar && student.avatar !== 'default_avatar.jpg') {
                     avatarHtml = `<img src="/static/uploads/avatar/${student.avatar}" class="license-img rounded" 
-                                 onclick="showLicense('/static/uploads/avatar/${student.avatar}')" 
+                                 onclick="showLicense('/static/uploads/avatar/${student.avatar}', '头像')" 
                                  alt="头像">`;
                 } else {
                     avatarHtml = '<i class="bi bi-person-circle text-muted" style="font-size: 2rem;"></i>';
@@ -723,9 +723,11 @@
             });
         }
 
-        // 查看资质图片（打开模态框）
-        function showLicense(imgUrl) {
+        // 查看图片（打开模态框）
+        function showLicense(imgUrl, imgType = '资质证明') {
             $('#modalImgSrc').attr('src', imgUrl);  // 设置图片路径
+            $('#modalImgSrc').attr('alt', imgType);  // 设置图片alt属性
+            $('.modal-title').text(imgType + '图片');  // 设置模态框标题
             $('#licenseModal').modal('show');  // 显示模态框
         }
 

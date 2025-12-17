@@ -78,6 +78,7 @@
                     <label for="payPassword" class="form-label">请输入6位支付密码</label>
                     <input type="password" class="form-control" id="payPassword" placeholder="请输入支付密码" maxlength="6"
                         pattern="\d{6}" inputmode="numeric">
+                    <small class="text-muted">若未设置支付密码，请随机输入6位数字密码并点击确认支付</small>
                 </div>
                 <div id="passwordError" class="alert alert-danger d-none">支付密码错误，请重新输入</div>
             </div>
@@ -114,7 +115,7 @@
                     <div class="mb-3">
                         <label for="complaintImages" class="form-label">上传图片（可选）</label>
                         <input type="file" class="form-control" id="complaintImages" multiple accept="image/*">
-                        <div class="form-text text-muted">最多上传9张图片，每张图片不超过5MB</div>
+                        <!-- <div class="form-text text-muted">最多上传9张图片，每张图片不超过5MB</div> -->
                     </div>
                 </form>
             </div>
@@ -681,6 +682,12 @@
                         const errorResponse = JSON.parse(xhr.responseText);
                         if (errorResponse && errorResponse.msg) {
                             errorMessage = errorResponse.msg;
+                        }
+                        // 检查是否需要跳转到设置支付密码界面
+                        if (xhr.status === 402 || (errorResponse && errorResponse.code === 402)) {
+                            alert('您还未设置支付密码，请先设置支付密码');
+                            window.location.href = '/student/set-pay-password';
+                            return;
                         }
                     } catch (e) {
                         // 如果无法解析JSON，保持默认错误信息

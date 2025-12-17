@@ -574,8 +574,8 @@
         }
 
         // 首先在前端进行基本验证
-        if (newPassword.length < 8) {
-            alert('新密码长度不能少于8位');
+        if (newPassword.length < 8 || newPassword.length > 20) {
+            alert('新密码长度需8-20位');
             return;
         }
 

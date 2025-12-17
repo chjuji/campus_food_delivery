@@ -769,9 +769,17 @@
             // 清空日期输入框
             $('#startDate').val('');
             $('#endDate').val('');
+            // 清除结束日期的最小限制
+            $('#endDate').removeAttr('min');
             // 重新加载数据
             loadOrderData();
         }
+
+        // 监听开始日期变化，更新结束日期的最小可选值
+        $('#startDate').change(function () {
+            const startDate = $(this).val();
+            $('#endDate').attr('min', startDate);
+        });
 
         // 加载订单统计数据
         function loadOrderData() {

@@ -946,6 +946,13 @@ def get_order_statistics():
         from models.order import Order
         from datetime import datetime, timedelta
         
+        # 验证日期范围
+        if start_date and end_date:
+            start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+            end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_datetime < start_datetime:
+                return jsonify({'code': 400, 'msg': '结束日期不能早于开始日期'}), 400
+        
         # 构建查询
         query = Order.query
         

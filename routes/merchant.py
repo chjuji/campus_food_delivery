@@ -1440,6 +1440,10 @@ def create_coupon():
         if not all([coupon_name, type, value, total, start_time, end_time]):
             return jsonify({'success': False, 'message': '缺少必要参数'}), 400
         
+        # 验证结束时间不能早于开始时间
+        if end_time <= start_time:
+            return jsonify({'success': False, 'message': '结束时间不能早于或等于开始时间'}), 400
+        
         # 如果是无门槛券，强制将使用门槛设置为0
         if type == '无门槛':
             min_spend = 0
@@ -1500,10 +1504,19 @@ def update_coupon(coupon_id):
             coupon.min_spend = min_spend
         if total is not None:
             coupon.total = total
+        # 先解析时间
+        updated_start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S') if start_time else coupon.start_time
+        updated_end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S') if end_time else coupon.end_time
+        
+        # 验证结束时间不能早于开始时间
+        if updated_end_time <= updated_start_time:
+            return jsonify({'success': False, 'message': '结束时间不能早于或等于开始时间'}), 400
+        
+        # 更新时间
         if start_time:
-            coupon.start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')
+            coupon.start_time = updated_start_time
         if end_time:
-            coupon.end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')
+            coupon.end_time = updated_end_time
         
         db.session.commit()
         

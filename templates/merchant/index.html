@@ -433,6 +433,8 @@
                         const endTime = coupon.end_time.replace(' ', 'T').slice(0, 16);
                         $('#couponStartTime').val(startTime);
                         $('#couponEndTime').val(endTime);
+                        // 设置结束时间的最小可选值为当前开始时间
+                        $('#couponEndTime').attr('min', startTime);
 
                         // 显示模态框
                         $('#couponModal').modal('show');
@@ -573,6 +575,17 @@
         // 监听优惠券类型变化事件
         $('#couponType').change(function () {
             updateCouponValueLabel();
+        });
+
+        // 监听开始时间变化，更新结束时间的最小可选值
+        $('#couponStartTime').change(function () {
+            const startTime = $(this).val();
+            $('#couponEndTime').attr('min', startTime);
+        });
+
+        // 监听结束时间变化，确保不早于开始时间（通过min属性自动控制）
+        $('#couponEndTime').change(function () {
+            // 已经通过min属性限制，无需额外提示
         });
 
         // 保存优惠券按钮点击事件

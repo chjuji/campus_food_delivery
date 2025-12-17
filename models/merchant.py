@@ -22,10 +22,10 @@ class Merchant(db.Model):
     wallet = db.Column(db.DECIMAL(10, 2), default=0.00, comment='商户钱包余额')
 
     # 关联关系
-    dishes = db.relationship('Dish', backref='merchant', lazy=True)
-    orders = db.relationship('Order', backref='merchant', lazy=True)
-    coupons = db.relationship('Coupon', backref='merchant', lazy=True)
-    comments = db.relationship('Comment', backref='merchant', lazy=True)
+    dishes = db.relationship('Dish', backref='merchant', lazy=True, cascade="all, delete-orphan")
+    orders = db.relationship('Order', backref='merchant', lazy=True, cascade="all, delete-orphan")
+    coupons = db.relationship('Coupon', backref='merchant', lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship('Comment', backref='merchant', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Merchant {self.merchant_name}>'

@@ -21,9 +21,9 @@ class Order(db.Model):
     finish_time = db.Column(db.DateTime, comment='完成时间')
 
     # 关联关系
-    order_items = db.relationship('OrderItem', backref='order', lazy=True)
-    comment = db.relationship('Comment', backref='order', foreign_keys='Comment.order_id', uselist=False)
-    refund = db.relationship('Refund', backref='order', uselist=False)
+    order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
+    comment = db.relationship('Comment', backref='order', foreign_keys='Comment.order_id', uselist=False, cascade="all, delete-orphan")
+    refund = db.relationship('Refund', backref='order', uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Order {self.order_no}>'

@@ -237,7 +237,7 @@
 
         // 上一页
         html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="loadOrders(${currentPage - 1})">&laquo;</a>
+                <a class="page-link" href="#" onclick="loadOrders(${currentPage - 1}, '${currentStatus}', '${currentKeyword}')">&laquo;</a>
             </li>`;
 
         // 页码
@@ -245,13 +245,13 @@
             if (i === currentPage) {
                 html += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
             } else {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadOrders(${i})">${i}</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadOrders(${i}, '${currentStatus}', '${currentKeyword}')">${i}</a></li>`;
             }
         }
 
         // 下一页
         html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="loadOrders(${currentPage + 1})">&raquo;</a>
+                <a class="page-link" href="#" onclick="loadOrders(${currentPage + 1}, '${currentStatus}', '${currentKeyword}')">&raquo;</a>
             </li>`;
 
         html += `</ul>`;

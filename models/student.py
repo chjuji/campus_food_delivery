@@ -17,9 +17,9 @@ class Student(db.Model):
     wallet = db.Column(db.Numeric(10, 2), default=0.00, comment='钱包余额')
 
     # 关联关系
-    orders = db.relationship('Order', backref='student', lazy=True)
-    cart_items = db.relationship('Cart', backref='student', lazy=True)
-    comments = db.relationship('Comment', backref='student', lazy=True)
+    orders = db.relationship('Order', backref='student', lazy=True, cascade="all, delete-orphan")
+    cart_items = db.relationship('Cart', backref='student', lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship('Comment', backref='student', lazy=True, cascade="all, delete-orphan")
     addresses = db.relationship('Address', backref='student', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):

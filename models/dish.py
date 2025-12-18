@@ -16,8 +16,8 @@ class Dish(db.Model):
     create_time = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
 
     # 关联关系
-    cart_items = db.relationship('Cart', backref='dish', lazy=True)
-    order_items = db.relationship('OrderItem', backref='dish', lazy=True)
+    cart_items = db.relationship('Cart', backref='dish', lazy=True, cascade="all, delete-orphan")
+    order_items = db.relationship('OrderItem', backref='dish', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Dish {self.dish_name}>'
